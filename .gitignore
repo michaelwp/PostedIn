@@ -1,0 +1,16 @@
+# Binary files
+bin/
+
+# Configuration and data files
+config.json
+posts.json
+linkedin_token.json
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+.claude
