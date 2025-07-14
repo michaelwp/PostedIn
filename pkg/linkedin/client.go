@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -14,8 +15,9 @@ import (
 const (
 	AuthURL     = "https://www.linkedin.com/oauth/v2/authorization"
 	TokenURL    = "https://www.linkedin.com/oauth/v2/accessToken"
-	APIBaseURL  = "https://api.linkedin.com/v2"
-	UGCPostsURL = APIBaseURL + "/ugcPosts"
+	UserInfoURL = "https://api.linkedin.com/v2/userinfo"
+	APIBaseURL  = "https://api.linkedin.com/rest"
+	PostsURL    = APIBaseURL + "/posts"
 )
 
 type Config struct {
@@ -31,16 +33,12 @@ type Client struct {
 	client *http.Client
 }
 
-type UGCPost struct {
-	Author          string                 `json:"author"`
-	LifecycleState  string                 `json:"lifecycleState"`
-	SpecificContent map[string]interface{} `json:"specificContent"`
-	Visibility      map[string]interface{} `json:"visibility"`
-}
-
-type ShareContent struct {
-	ShareCommentary map[string]interface{} `json:"shareCommentary"`
-	ShareMediaCategory string               `json:"shareMediaCategory"`
+type Post struct {
+	Author         string                 `json:"author"`
+	Commentary     string                 `json:"commentary"`
+	Visibility     string                 `json:"visibility"`
+	Distribution   map[string]interface{} `json:"distribution"`
+	LifecycleState string                 `json:"lifecycleState"`
 }
 
 func NewConfig(clientID, clientSecret, redirectURL string) *Config {
@@ -48,7 +46,7 @@ func NewConfig(clientID, clientSecret, redirectURL string) *Config {
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  redirectURL,
-		Scopes:       []string{"openid", "profile", "w_member_social"},
+		Scopes:       []string{"openid", "profile", "w_member_social", "email"},
 	}
 }
 
@@ -79,7 +77,7 @@ func (c *Client) ExchangeToken(ctx context.Context, code string) (*oauth2.Token,
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange token: %w", err)
 	}
-	
+
 	c.token = token
 	c.client = c.config.Client(ctx, token)
 	return token, nil
@@ -95,7 +93,21 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 		return nil, fmt.Errorf("no access token available")
 	}
 
-	resp, err := c.client.Get(APIBaseURL + "/me")
+	req, err := http.NewRequestWithContext(ctx, "GET", UserInfoURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token.AccessToken)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "PostedIn/1.0")
+	req.Header.Set("LinkedIn-Version", "202506")
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
@@ -107,7 +119,7 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: %s", string(body))
+		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var profile map[string]interface{}
@@ -123,37 +135,44 @@ func (c *Client) CreatePost(ctx context.Context, text string, userID string) err
 		return fmt.Errorf("no access token available")
 	}
 
-	// Create the post payload
-	post := UGCPost{
-		Author:         "urn:li:person:" + userID,
+	// Create the post payload using the new Posts API format
+	post := Post{
+		Author:     "urn:li:person:" + userID,
+		Commentary: text,
+		Visibility: "PUBLIC",
+		Distribution: map[string]interface{}{
+			"feedDistribution":               "MAIN_FEED",
+			"targetEntities":                 []interface{}{},
+			"thirdPartyDistributionChannels": []interface{}{},
+		},
 		LifecycleState: "PUBLISHED",
-		SpecificContent: map[string]interface{}{
-			"com.linkedin.ugc.ShareContent": ShareContent{
-				ShareCommentary: map[string]interface{}{
-					"text": text,
-				},
-				ShareMediaCategory: "NONE",
-			},
-		},
-		Visibility: map[string]interface{}{
-			"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-		},
 	}
+
+	// Debug: print the post payload
+	fmt.Printf("DEBUG: Creating post with author: %s\n", post.Author)
+	fmt.Printf("DEBUG: User ID: %s\n", userID)
 
 	jsonData, err := json.Marshal(post)
 	if err != nil {
 		return fmt.Errorf("failed to marshal post data: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", UGCPostsURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", PostsURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.token.AccessToken)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "PostedIn/1.0")
+	req.Header.Set("LinkedIn-Version", "202506")
 
-	resp, err := c.client.Do(req)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to create post: %w", err)
 	}

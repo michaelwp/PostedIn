@@ -127,7 +127,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		// Don't fail completely - token is still valid
 	} else {
 		// Save user ID to config
-		if id, ok := profile["id"].(string); ok {
+		if id, ok := profile["sub"].(string); ok {
 			s.config.LinkedIn.UserID = id
 			if err := config.SaveConfig(s.config); err != nil {
 				log.Printf("⚠️ Config save failed: %v", err)
