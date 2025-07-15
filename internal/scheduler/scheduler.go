@@ -75,7 +75,7 @@ func (s *Scheduler) AddPost(content string, scheduledAt time.Time, cfg *config.C
 	if err != nil {
 		loc = time.UTC
 	}
-	
+
 	fmt.Printf("Post scheduled with ID %d for %s\n", post.ID, scheduledAt.In(loc).Format("2006-01-02 15:04 MST"))
 	return nil
 }
@@ -111,7 +111,7 @@ func (s *Scheduler) MarkAsPosted(id int) error {
 
 func (s *Scheduler) GetDuePosts(cfg *config.Config) []models.Post {
 	var duePosts []models.Post
-	
+
 	// Use timezone-aware current time
 	now, err := cfg.Now()
 	if err != nil {

@@ -30,11 +30,11 @@ func NewCLI(scheduler *scheduler.Scheduler) *CLI {
 func (c *CLI) Run() {
 	fmt.Println("🔗 LinkedIn Post Scheduler")
 	fmt.Println("==========================")
-	
+
 	for {
 		c.showMenu()
 		choice := c.getInput("Select an option (1-10): ")
-		
+
 		switch choice {
 		case "1":
 			c.schedulePost()
@@ -95,27 +95,27 @@ func (c *CLI) schedulePost() {
 		fmt.Println("Content cannot be empty.")
 		return
 	}
-	
+
 	dateStr := c.getInput("Enter date (YYYY-MM-DD): ")
 	timeStr := c.getInput("Enter time (HH:MM): ")
-	
+
 	scheduledAt, err := cfg.ParseTimeInTimezone(dateStr, timeStr)
 	if err != nil {
 		fmt.Println("Invalid date/time format. Please use YYYY-MM-DD and HH:MM")
 		return
 	}
-	
+
 	// Check against timezone-aware current time
 	now, err := cfg.Now()
 	if err != nil {
 		now = time.Now()
 	}
-	
+
 	if scheduledAt.Before(now) {
 		fmt.Println("Cannot schedule posts in the past.")
 		return
 	}
-	
+
 	err = c.scheduler.AddPost(content, scheduledAt, cfg)
 	if err != nil {
 		fmt.Printf("Error scheduling post: %v\n", err)
@@ -134,19 +134,19 @@ func (c *CLI) listPosts() {
 		fmt.Println("No posts scheduled.")
 		return
 	}
-	
+
 	// Get timezone-aware current time
 	now, err := cfg.Now()
 	if err != nil {
 		now = time.Now()
 	}
-	
+
 	// Get timezone for display
 	loc, err := cfg.GetTimezone()
 	if err != nil {
 		loc = time.UTC
 	}
-	
+
 	fmt.Println("\nScheduled Posts:")
 	fmt.Println("================")
 	for _, post := range posts {
@@ -154,8 +154,8 @@ func (c *CLI) listPosts() {
 		if post.Status == "scheduled" && !post.ScheduledAt.After(now) {
 			status = "ready to post"
 		}
-		
-		fmt.Printf("ID: %d | Status: %s | Scheduled: %s\n", 
+
+		fmt.Printf("ID: %d | Status: %s | Scheduled: %s\n",
 			post.ID, status, post.ScheduledAt.In(loc).Format("2006-01-02 15:04 MST"))
 		fmt.Printf("Content: %s\n", c.truncateString(post.Content, 80))
 		fmt.Println("---")
@@ -174,14 +174,14 @@ func (c *CLI) checkDuePosts() {
 		fmt.Println("No posts are due for posting.")
 		return
 	}
-	
+
 	for _, post := range duePosts {
 		fmt.Printf("\n🚀 Time to post! (ID: %d)\n", post.ID)
 		fmt.Printf("Content: %s\n", post.Content)
-		
+
 		response := c.getInput("Mark as posted? (y/n): ")
 		response = strings.ToLower(response)
-		
+
 		if response == "y" || response == "yes" {
 			err := c.scheduler.MarkAsPosted(post.ID)
 			if err != nil {
@@ -195,13 +195,13 @@ func (c *CLI) checkDuePosts() {
 
 func (c *CLI) deletePost() {
 	idStr := c.getInput("Enter post ID to delete: ")
-	
+
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		fmt.Println("Invalid ID format.")
 		return
 	}
-	
+
 	err = c.scheduler.DeletePost(id)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -267,20 +267,20 @@ func (c *CLI) autoPublishDue() {
 	}
 
 	fmt.Printf("Found %d posts ready to publish.\n", len(duePosts))
-	
+
 	for _, post := range duePosts {
 		fmt.Printf("\nPublishing post %d: %s\n", post.ID, c.truncateString(post.Content, 60))
-		
+
 		ctx := context.Background()
 		err := c.scheduler.PublishToLinkedIn(ctx, post.ID, cfg)
 		if err != nil {
 			fmt.Printf("❌ Failed to publish post %d: %v\n", post.ID, err)
 			continue
 		}
-		
+
 		fmt.Printf("✅ Post %d published successfully!\n", post.ID)
 	}
-	
+
 	fmt.Println("\nAuto-publish completed!")
 }
 
@@ -300,7 +300,7 @@ func (c *CLI) debugLinkedInAuth() {
 	}
 
 	fmt.Println("✅ Configuration validation passed!")
-	
+
 	// Print detailed debug info
 	debug.PrintAuthDetails(cfg)
 	debug.PrintCommonIssues()
@@ -315,7 +315,7 @@ func (c *CLI) configureTimezone() {
 
 	fmt.Println("🌍 Timezone Configuration")
 	fmt.Println("=========================")
-	
+
 	// Show current timezone
 	currentInfo, err := cfg.GetTimezoneInfo()
 	if err != nil {
@@ -323,21 +323,21 @@ func (c *CLI) configureTimezone() {
 	} else {
 		fmt.Printf("Current timezone: %s\n", currentInfo)
 	}
-	
+
 	// Show local system timezone
 	localLocation, localOffset, err := config.DetectLocalTimezone()
 	if err == nil {
 		fmt.Printf("System timezone: %s %s\n", localLocation, localOffset)
 	}
-	
+
 	fmt.Println("\nOptions:")
 	fmt.Println("1. Use system local timezone")
 	fmt.Println("2. Select from common timezones")
 	fmt.Println("3. Enter custom timezone")
 	fmt.Println("4. Back to main menu")
-	
+
 	choice := c.getInput("Select an option (1-4): ")
-	
+
 	switch choice {
 	case "1":
 		c.setLocalTimezone(cfg)
@@ -358,79 +358,79 @@ func (c *CLI) setLocalTimezone(cfg *config.Config) {
 		fmt.Printf("❌ Failed to detect local timezone: %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("Setting timezone to local system timezone: %s %s\n", localLocation, localOffset)
-	
+
 	err = cfg.UpdateTimezone(localLocation)
 	if err != nil {
 		fmt.Printf("❌ Failed to update timezone: %v\n", err)
 		return
 	}
-	
+
 	err = config.SaveConfig(cfg)
 	if err != nil {
 		fmt.Printf("❌ Failed to save config: %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("✅ Timezone updated to %s %s\n", localLocation, localOffset)
 }
 
 func (c *CLI) selectCommonTimezone(cfg *config.Config) {
 	timezones := config.GetCommonTimezones()
-	
+
 	fmt.Println("\nCommon Timezones:")
 	fmt.Println("=================")
 	for i, tz := range timezones {
 		fmt.Printf("%d. %s - %s\n", i+1, tz.Name, tz.Description)
 	}
-	
+
 	choiceStr := c.getInput(fmt.Sprintf("Select a timezone (1-%d): ", len(timezones)))
 	choice, err := strconv.Atoi(choiceStr)
 	if err != nil || choice < 1 || choice > len(timezones) {
 		fmt.Println("❌ Invalid selection.")
 		return
 	}
-	
+
 	selectedTz := timezones[choice-1]
-	
+
 	err = cfg.UpdateTimezone(selectedTz.Name)
 	if err != nil {
 		fmt.Printf("❌ Failed to update timezone: %v\n", err)
 		return
 	}
-	
+
 	err = config.SaveConfig(cfg)
 	if err != nil {
 		fmt.Printf("❌ Failed to save config: %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("✅ Timezone updated to %s\n", selectedTz.Description)
 }
 
 func (c *CLI) setCustomTimezone(cfg *config.Config) {
 	fmt.Println("\nEnter a timezone location (e.g., America/New_York, Europe/London, Asia/Tokyo)")
 	fmt.Println("See: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones")
-	
+
 	location := c.getInput("Timezone location: ")
 	if location == "" {
 		fmt.Println("❌ Timezone location cannot be empty.")
 		return
 	}
-	
+
 	err := cfg.UpdateTimezone(location)
 	if err != nil {
 		fmt.Printf("❌ Invalid timezone location: %v\n", err)
 		return
 	}
-	
+
 	err = config.SaveConfig(cfg)
 	if err != nil {
 		fmt.Printf("❌ Failed to save config: %v\n", err)
 		return
 	}
-	
+
 	timezoneInfo, _ := cfg.GetTimezoneInfo()
 	fmt.Printf("✅ Timezone updated to %s\n", timezoneInfo)
 }

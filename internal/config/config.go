@@ -48,7 +48,7 @@ func LoadConfig() (*Config, error) {
 			localLocation = "Asia/Bangkok"
 			localOffset = "+07:00"
 		}
-		
+
 		// Create default config with local timezone
 		defaultConfig := &Config{
 			LinkedIn: LinkedInConfig{
@@ -65,11 +65,11 @@ func LoadConfig() (*Config, error) {
 				Offset:   localOffset,
 			},
 		}
-		
+
 		if err := SaveConfig(defaultConfig); err != nil {
 			return nil, fmt.Errorf("failed to create default config: %w", err)
 		}
-		
+
 		return nil, fmt.Errorf("config file created at %s with local timezone (%s %s) - please fill in your LinkedIn app credentials", ConfigFile, localLocation, localOffset)
 	}
 
@@ -151,13 +151,13 @@ func (c *Config) ParseTimeInTimezone(dateStr, timeStr string) (time.Time, error)
 	if err != nil {
 		return time.Time{}, err
 	}
-	
+
 	dateTimeStr := dateStr + " " + timeStr
 	parsedTime, err := time.ParseInLocation("2006-01-02 15:04", dateTimeStr, loc)
 	if err != nil {
 		return time.Time{}, err
 	}
-	
+
 	return parsedTime, nil
 }
 
@@ -175,30 +175,30 @@ func (c *Config) UpdateTimezone(location string) error {
 	if err := timezone.ValidateTimezone(location); err != nil {
 		return err
 	}
-	
+
 	// Get the current offset for the new timezone
 	loc, err := time.LoadLocation(location)
 	if err != nil {
 		return fmt.Errorf("failed to load timezone: %w", err)
 	}
-	
+
 	now := time.Now().In(loc)
 	_, offset := now.Zone()
-	
+
 	hours := offset / 3600
 	minutes := (offset % 3600) / 60
-	
+
 	var offsetStr string
 	if offset >= 0 {
 		offsetStr = fmt.Sprintf("+%02d:%02d", hours, minutes)
 	} else {
 		offsetStr = fmt.Sprintf("-%02d:%02d", -hours, -minutes)
 	}
-	
+
 	// Update config
 	c.Timezone.Location = location
 	c.Timezone.Offset = offsetStr
-	
+
 	return nil
 }
 

@@ -9,26 +9,26 @@ import (
 func DetectLocalTimezone() (string, string, error) {
 	now := time.Now()
 	zone, offset := now.Zone()
-	
+
 	// Get the timezone location name
 	location := now.Location().String()
-	
+
 	// Format offset as +/-HHMM to +/-HH:MM
 	hours := offset / 3600
 	minutes := (offset % 3600) / 60
-	
+
 	var offsetStr string
 	if offset >= 0 {
 		offsetStr = fmt.Sprintf("+%02d:%02d", hours, minutes)
 	} else {
 		offsetStr = fmt.Sprintf("-%02d:%02d", -hours, -minutes)
 	}
-	
+
 	// If location is "Local", try to get a better name
 	if location == "Local" {
 		location = getLocationFromZone(zone, offset)
 	}
-	
+
 	return location, offsetStr, nil
 }
 
@@ -36,28 +36,28 @@ func DetectLocalTimezone() (string, string, error) {
 func getLocationFromZone(zone string, offset int) string {
 	// Common timezone mappings
 	timezoneMap := map[string]map[int]string{
-		"WIB": {7 * 3600: "Asia/Jakarta"},     // Western Indonesian Time
-		"WITA": {8 * 3600: "Asia/Makassar"},  // Central Indonesian Time
-		"WIT": {9 * 3600: "Asia/Jayapura"},   // Eastern Indonesian Time
-		"ICT": {7 * 3600: "Asia/Bangkok"},    // Indochina Time
-		"JST": {9 * 3600: "Asia/Tokyo"},      // Japan Standard Time
-		"KST": {9 * 3600: "Asia/Seoul"},      // Korea Standard Time
-		"CST": {8 * 3600: "Asia/Shanghai"},   // China Standard Time
-		"SGT": {8 * 3600: "Asia/Singapore"},  // Singapore Time
-		"MYT": {8 * 3600: "Asia/Kuala_Lumpur"}, // Malaysia Time
-		"PHT": {8 * 3600: "Asia/Manila"},     // Philippines Time
-		"EST": {-5 * 3600: "America/New_York"}, // Eastern Standard Time
-		"PST": {-8 * 3600: "America/Los_Angeles"}, // Pacific Standard Time
-		"GMT": {0: "Europe/London"},          // Greenwich Mean Time
-		"UTC": {0: "UTC"},                    // Coordinated Universal Time
+		"WIB":  {7 * 3600: "Asia/Jakarta"},         // Western Indonesian Time
+		"WITA": {8 * 3600: "Asia/Makassar"},        // Central Indonesian Time
+		"WIT":  {9 * 3600: "Asia/Jayapura"},        // Eastern Indonesian Time
+		"ICT":  {7 * 3600: "Asia/Bangkok"},         // Indochina Time
+		"JST":  {9 * 3600: "Asia/Tokyo"},           // Japan Standard Time
+		"KST":  {9 * 3600: "Asia/Seoul"},           // Korea Standard Time
+		"CST":  {8 * 3600: "Asia/Shanghai"},        // China Standard Time
+		"SGT":  {8 * 3600: "Asia/Singapore"},       // Singapore Time
+		"MYT":  {8 * 3600: "Asia/Kuala_Lumpur"},    // Malaysia Time
+		"PHT":  {8 * 3600: "Asia/Manila"},          // Philippines Time
+		"EST":  {-5 * 3600: "America/New_York"},    // Eastern Standard Time
+		"PST":  {-8 * 3600: "America/Los_Angeles"}, // Pacific Standard Time
+		"GMT":  {0: "Europe/London"},               // Greenwich Mean Time
+		"UTC":  {0: "UTC"},                         // Coordinated Universal Time
 	}
-	
+
 	if locations, exists := timezoneMap[zone]; exists {
 		if location, exists := locations[offset]; exists {
 			return location
 		}
 	}
-	
+
 	// Fallback: construct a generic location based on offset
 	hours := offset / 3600
 	if hours >= 0 {
@@ -111,20 +111,20 @@ func FormatTimezoneInfo(location string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	now := time.Now().In(loc)
 	zone, offset := now.Zone()
-	
+
 	hours := offset / 3600
 	minutes := (offset % 3600) / 60
-	
+
 	var offsetStr string
 	if offset >= 0 {
 		offsetStr = fmt.Sprintf("+%02d:%02d", hours, minutes)
 	} else {
 		offsetStr = fmt.Sprintf("-%02d:%02d", -hours, -minutes)
 	}
-	
+
 	return fmt.Sprintf("%s (%s %s)", location, zone, offsetStr), nil
 }
 
@@ -134,6 +134,6 @@ func GetCurrentTimeInTimezone(location string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	
+
 	return time.Now().In(loc), nil
 }

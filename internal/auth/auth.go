@@ -24,7 +24,7 @@ func NewAuthServer(cfg *config.Config) *AuthServer {
 		cfg.LinkedIn.ClientSecret,
 		cfg.LinkedIn.RedirectURL,
 	)
-	
+
 	return &AuthServer{
 		client: linkedin.NewClient(linkedinConfig),
 		config: cfg,
@@ -57,7 +57,7 @@ func (a *AuthServer) StartOAuth() (*linkedin.Client, error) {
 
 	// Generate auth URL
 	authURL := a.client.GetAuthURL("linkedin-auth-state")
-	
+
 	fmt.Println("🔗 LinkedIn Authentication Required")
 	fmt.Println("===================================")
 	fmt.Printf("Please open this URL in your browser to authenticate:\n\n%s\n\n", authURL)
@@ -102,7 +102,7 @@ func (a *AuthServer) handleHome(w http.ResponseWriter, r *http.Request) {
 func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
-	
+
 	if state != "linkedin-auth-state" {
 		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
 		return
@@ -156,7 +156,7 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
     <p>LinkedIn Post Scheduler is ready to use!</p>
 </body>
 </html>`
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 
