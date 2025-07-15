@@ -52,10 +52,11 @@ type CronConfig struct {
 }
 
 const (
+	BaseConfigPath = "./internal/config"
 	// ConfigFile is the default configuration file name.
-	ConfigFile = "config.json"
+	ConfigFile = BaseConfigPath + "/config.json"
 	// TokenFile is the default OAuth token file name.
-	TokenFile = "linkedin_token.json"
+	TokenFile = BaseConfigPath + "/linkedin_token.json"
 )
 
 // LoadConfig loads application configuration from the config file or creates default configuration.
