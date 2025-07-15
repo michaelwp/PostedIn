@@ -6,14 +6,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// TimezoneResponse represents the response format for timezone info.
+// @Description Response format for timezone info.
 type TimezoneResponse struct {
 	Location string `json:"location"`
 	Offset   string `json:"offset"`
 	Info     string `json:"info"`
 }
 
-// TimezoneUpdateRequest represents the request payload for updating timezone.
+// @Description Request payload for updating timezone.
 type TimezoneUpdateRequest struct {
 	Location string `json:"location"`
 }
@@ -26,7 +26,7 @@ func (r *Router) setupTimezoneRoutes(api fiber.Router) {
 	timezone.Post("/", r.updateTimezone)
 }
 
-// getTimezone returns the current timezone configuration.
+// @Router /timezone [get].
 func (r *Router) getTimezone(c *fiber.Ctx) error {
 	info, err := r.config.GetTimezoneInfo()
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *Router) getTimezone(c *fiber.Ctx) error {
 	})
 }
 
-// updateTimezone updates the timezone configuration.
+// @Router /timezone [post].
 func (r *Router) updateTimezone(c *fiber.Ctx) error {
 	var req TimezoneUpdateRequest
 	if err := c.BodyParser(&req); err != nil {

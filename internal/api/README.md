@@ -1,5 +1,26 @@
 # Internal API Package
 
+## API Documentation (Swagger/OpenAPI)
+
+The web API is now fully documented with Swagger (OpenAPI 3.0).
+
+- **Generate docs:**
+  ```bash
+  make swagger
+  ```
+- **Remove docs:**
+  ```bash
+  make docs-clean
+  ```
+- **View docs:**
+  1. Start the web API server:
+     ```bash
+     make run-web-api
+     ```
+  2. Open [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html) in your browser.
+
+This provides an interactive UI for all endpoints, request/response schemas, and live testing.
+
 This package contains the unified Web API implementation for the LinkedIn Post Scheduler using the Fiber framework. It includes both REST API endpoints and OAuth callback handling in a single server.
 
 ## Structure

@@ -17,14 +17,14 @@ import (
 	debug "PostedIn/internal/debug"
 )
 
-// AuthResponse represents the response format for authentication.
+// @Description Response format for authentication.
 type AuthResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
 	UserID  string `json:"user_id,omitempty"`
 }
 
-// AuthStatusResponse represents the response format for auth status.
+// @Description Response format for authentication status.
 type AuthStatusResponse struct {
 	Authenticated bool   `json:"authenticated"`
 	UserID        string `json:"user_id"`
@@ -40,7 +40,7 @@ func (r *Router) setupAuthRoutes(api fiber.Router) {
 	auth.Get("/debug", r.debugAuth)
 }
 
-// getLinkedInAuthURL returns the LinkedIn OAuth authorization URL.
+// @Router /auth/linkedin [get].
 func (r *Router) getLinkedInAuthURL(c *fiber.Ctx) error {
 	linkedinConfig := linkedin.NewConfig(
 		r.config.LinkedIn.ClientID,
@@ -56,7 +56,7 @@ func (r *Router) getLinkedInAuthURL(c *fiber.Ctx) error {
 	})
 }
 
-// getAuthStatus checks the current LinkedIn authentication status.
+// @Router /auth/status [get].
 func (r *Router) getAuthStatus(c *fiber.Ctx) error {
 	token, err := config.LoadToken(r.config.Storage.TokenFile)
 	if err != nil || token == nil {
@@ -84,7 +84,7 @@ func (r *Router) getAuthStatus(c *fiber.Ctx) error {
 	})
 }
 
-// debugAuth provides debugging information for LinkedIn authentication.
+// @Router /auth/debug [get].
 func (r *Router) debugAuth(c *fiber.Ctx) error {
 	var issues []string
 	var info string
