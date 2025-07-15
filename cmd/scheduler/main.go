@@ -1,3 +1,4 @@
+// Package main provides the CLI application entry point for the LinkedIn Post Scheduler.
 package main
 
 import (
@@ -18,7 +19,7 @@ func main() {
 	}
 
 	// Initialize cron scheduler
-	cronScheduler := cron.NewCronScheduler(sched, cfg)
+	cronScheduler := cron.NewScheduler(sched, cfg)
 
 	// Auto-start cron scheduler if enabled and there are scheduled posts
 	if cfg.Cron.Enabled {

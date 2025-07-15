@@ -1,3 +1,4 @@
+// Package timezone provides timezone management and conversion utilities for the LinkedIn Post Scheduler.
 package timezone
 
 import (
@@ -67,14 +68,14 @@ func getLocationFromZone(zone string, offset int) string {
 	hours := offset / secondsPerHour
 	if hours >= 0 {
 		return fmt.Sprintf("Etc/GMT-%d", hours)
-	} else {
-		return fmt.Sprintf("Etc/GMT+%d", -hours)
 	}
+
+	return fmt.Sprintf("Etc/GMT+%d", -hours)
 }
 
 // GetCommonTimezones returns a list of commonly used timezones.
-func GetCommonTimezones() []TimezoneInfo {
-	return []TimezoneInfo{
+func GetCommonTimezones() []Info {
+	return []Info{
 		{Name: "Asia/Jakarta", Description: "Western Indonesian Time (WIB)", Offset: "+07:00"},
 		{Name: "Asia/Makassar", Description: "Central Indonesian Time (WITA)", Offset: "+08:00"},
 		{Name: "Asia/Jayapura", Description: "Eastern Indonesian Time (WIT)", Offset: "+09:00"},
@@ -94,8 +95,8 @@ func GetCommonTimezones() []TimezoneInfo {
 	}
 }
 
-// TimezoneInfo represents timezone information.
-type TimezoneInfo struct {
+// Info represents timezone information.
+type Info struct {
 	Name        string
 	Description string
 	Offset      string
@@ -107,6 +108,7 @@ func ValidateTimezone(location string) error {
 	if err != nil {
 		return fmt.Errorf("invalid timezone location '%s': %w", location, err)
 	}
+
 	return nil
 }
 

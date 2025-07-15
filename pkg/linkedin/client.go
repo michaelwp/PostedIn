@@ -1,3 +1,4 @@
+// Package linkedin provides LinkedIn API client functionality for OAuth authentication and post publishing.
 package linkedin
 
 import (
@@ -17,13 +18,19 @@ const (
 )
 
 const (
-	AuthURL     = "https://www.linkedin.com/oauth/v2/authorization"
-	TokenURL    = "https://www.linkedin.com/oauth/v2/accessToken"
+	// AuthURL is the LinkedIn OAuth authorization endpoint.
+	AuthURL = "https://www.linkedin.com/oauth/v2/authorization"
+	// TokenURL is the LinkedIn OAuth token exchange endpoint.
+	TokenURL = "https://www.linkedin.com/oauth/v2/accessToken"
+	// UserInfoURL is the LinkedIn user info endpoint.
 	UserInfoURL = "https://api.linkedin.com/v2/userinfo"
-	APIBaseURL  = "https://api.linkedin.com/rest"
-	PostsURL    = APIBaseURL + "/posts"
+	// APIBaseURL is the base URL for LinkedIn API v2.
+	APIBaseURL = "https://api.linkedin.com/rest"
+	// PostsURL is the LinkedIn posts API endpoint.
+	PostsURL = APIBaseURL + "/posts"
 )
 
+// Config holds LinkedIn OAuth configuration parameters.
 type Config struct {
 	ClientID     string
 	ClientSecret string
@@ -31,12 +38,14 @@ type Config struct {
 	Scopes       []string
 }
 
+// Client provides LinkedIn API functionality with OAuth authentication.
 type Client struct {
 	config *oauth2.Config
 	token  *oauth2.Token
 	client *http.Client
 }
 
+// Post represents a LinkedIn post structure for API requests.
 type Post struct {
 	Author         string                 `json:"author"`
 	Commentary     string                 `json:"commentary"`
@@ -45,6 +54,7 @@ type Post struct {
 	LifecycleState string                 `json:"lifecycleState"`
 }
 
+// NewConfig creates a new LinkedIn OAuth configuration.
 func NewConfig(clientID, clientSecret, redirectURL string) *Config {
 	return &Config{
 		ClientID:     clientID,
@@ -54,6 +64,7 @@ func NewConfig(clientID, clientSecret, redirectURL string) *Config {
 	}
 }
 
+// NewClient creates a new LinkedIn API client with the given configuration.
 func NewClient(config *Config) *Client {
 	oauth2Config := &oauth2.Config{
 		ClientID:     config.ClientID,
@@ -72,10 +83,12 @@ func NewClient(config *Config) *Client {
 	}
 }
 
+// GetAuthURL generates the OAuth authorization URL for LinkedIn.
 func (c *Client) GetAuthURL(state string) string {
 	return c.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
+// ExchangeToken exchanges an authorization code for an access token.
 func (c *Client) ExchangeToken(ctx context.Context, code string) (*oauth2.Token, error) {
 	token, err := c.config.Exchange(ctx, code)
 	if err != nil {
@@ -84,14 +97,17 @@ func (c *Client) ExchangeToken(ctx context.Context, code string) (*oauth2.Token,
 
 	c.token = token
 	c.client = c.config.Client(ctx, token)
+
 	return token, nil
 }
 
+// SetToken sets the OAuth access token for the client.
 func (c *Client) SetToken(token *oauth2.Token) {
 	c.token = token
 	c.client = c.config.Client(context.Background(), token)
 }
 
+// GetProfile retrieves the LinkedIn user profile information.
 func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error) {
 	if c.token == nil {
 		return nil, fmt.Errorf("no access token available")
@@ -115,6 +131,7 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
+
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			fmt.Printf("Warning: failed to close response body: %v\n", closeErr)
@@ -138,6 +155,7 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 	return profile, nil
 }
 
+// CreatePost creates a new LinkedIn post with the given text content.
 func (c *Client) CreatePost(ctx context.Context, text, userID string) error {
 	if c.token == nil {
 		return fmt.Errorf("no access token available")
@@ -184,6 +202,7 @@ func (c *Client) CreatePost(ctx context.Context, text, userID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create post: %w", err)
 	}
+
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			fmt.Printf("Warning: failed to close response body: %v\n", closeErr)
@@ -202,6 +221,7 @@ func (c *Client) CreatePost(ctx context.Context, text, userID string) error {
 	return nil
 }
 
+// IsAuthenticated checks if the client has a valid access token.
 func (c *Client) IsAuthenticated() bool {
 	return c.token != nil && c.token.Valid()
 }
