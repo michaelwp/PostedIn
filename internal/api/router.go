@@ -71,3 +71,8 @@ func (r *Router) healthCheck(c *fiber.Ctx) error {
 		"service":   "linkedin-post-scheduler-api",
 	})
 }
+
+// @title LinkedIn Post Scheduler API
+// @version 1.0
+// @description REST API for scheduling and publishing LinkedIn posts.
+// @BasePath /api

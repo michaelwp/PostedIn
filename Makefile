@@ -121,6 +121,16 @@ start-daemon: build
 	@echo "Use Ctrl+C to stop the daemon"
 	./$(BINARY_PATH)
 
+# Generate Swagger docs
+swagger:
+	@echo "Generating Swagger docs..."
+	go run github.com/swaggo/swag/cmd/swag init -g cmd/web-api/main.go --output docs
+
+# Clean Swagger docs
+docs-clean:
+	@echo "Cleaning Swagger docs..."
+	rm -rf docs
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -143,6 +153,8 @@ help:
 	@echo "  deps              - Install dependencies"
 	@echo "  pre-commit        - Run pre-commit checks manually"
 	@echo "  start-daemon      - Start scheduler daemon with auto-publishing"
+	@echo "  swagger           - Generate Swagger docs"
+	@echo "  docs-clean        - Remove generated Swagger docs"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-web-api build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon help
+.PHONY: build build-web-api build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean help

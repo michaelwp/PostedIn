@@ -14,6 +14,10 @@ import (
 	"PostedIn/internal/scheduler"
 
 	"github.com/gofiber/fiber/v2"
+	fiberSwagger "github.com/swaggo/fiber-swagger" // fiber middleware for Swagger UI
+
+	// swagger embed files.
+	_ "PostedIn/docs" // swagger docs
 )
 
 func main() {
@@ -69,6 +73,9 @@ func main() {
 	// Initialize API router
 	router := api.NewRouter(cfg, sched, cronScheduler)
 	router.SetupRoutes(app)
+
+	// Serve Swagger UI at /swagger/*
+	app.Get("/swagger/*", fiberSwagger.WrapHandler)
 
 	// Graceful shutdown
 	go func() {

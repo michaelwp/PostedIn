@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// SchedulerStatusResponse represents the response format for scheduler status.
+// @Description Response format for scheduler status.
 type SchedulerStatusResponse struct {
 	Running bool        `json:"running"`
 	Enabled bool        `json:"enabled"`
@@ -22,7 +22,7 @@ func (r *Router) setupSchedulerRoutes(api fiber.Router) {
 	scheduler.Get("/status", r.getSchedulerStatus)
 }
 
-// getSchedulerStatus returns the current status of the auto-scheduler.
+// @Router /scheduler/status [get].
 func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		response := SchedulerStatusResponse{
