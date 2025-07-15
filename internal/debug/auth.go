@@ -1,3 +1,4 @@
+// Package debug provides debugging utilities for LinkedIn authentication and OAuth troubleshooting.
 package debug
 
 import (
@@ -9,6 +10,7 @@ import (
 	"PostedIn/pkg/linkedin"
 )
 
+// ValidateLinkedInConfig validates the LinkedIn configuration settings.
 func ValidateLinkedInConfig(cfg *config.Config) error {
 	if cfg.LinkedIn.ClientID == "" {
 		return fmt.Errorf("LinkedIn Client ID is empty")
@@ -39,6 +41,7 @@ func ValidateLinkedInConfig(cfg *config.Config) error {
 	return nil
 }
 
+// PrintAuthDetails prints detailed authentication configuration information.
 func PrintAuthDetails(cfg *config.Config) {
 	fmt.Println("🔍 LinkedIn Authentication Debug Info")
 	fmt.Println("=====================================")
@@ -103,12 +106,15 @@ func maskString(s string) string {
 		suffixLen = 4
 		maskStr   = "****"
 	)
+
 	if len(s) <= maxLength {
 		return maskStr
 	}
+
 	return s[:prefixLen] + maskStr + s[len(s)-suffixLen:]
 }
 
+// PrintCommonIssues prints common LinkedIn OAuth troubleshooting information.
 func PrintCommonIssues() {
 	fmt.Println("\n🚨 Common LinkedIn OAuth Issues:")
 	fmt.Println("================================")

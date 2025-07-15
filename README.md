@@ -228,3 +228,29 @@ Enable verbose logging by checking the auto-scheduler status (option 10) which s
 - Active timers and their next execution times
 - Pending posts with countdown timers
 - System status and health checks
+
+## API Documentation (Swagger/OpenAPI)
+
+The web API is fully documented using Swagger (OpenAPI 3.0). You can view and interact with the API documentation in your browser.
+
+### How to Generate Docs
+
+- To generate or update the Swagger docs after editing API code or comments:
+  ```bash
+  make swagger
+  ```
+- To remove generated docs:
+  ```bash
+  make docs-clean
+  ```
+
+### How to View the API Docs
+
+1. Start the web API server:
+   ```bash
+   make run-web-api
+   ```
+2. Open your browser and go to:
+   [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+
+This interactive UI allows you to try out all endpoints, see request/response schemas, and explore the API.

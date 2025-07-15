@@ -1,3 +1,4 @@
+// Package auth provides OAuth authentication server functionality for LinkedIn integration.
 package auth
 
 import (
@@ -19,28 +20,31 @@ const (
 	writeTimeout    = 30 * time.Second
 )
 
-type AuthServer struct {
+// Server handles OAuth authentication flow with LinkedIn.
+type Server struct {
 	client *linkedin.Client
 	config *config.Config
 	done   chan *linkedin.Client
 	server *http.Server
 }
 
-func NewAuthServer(cfg *config.Config) *AuthServer {
+// NewServer creates a new OAuth authentication server.
+func NewServer(cfg *config.Config) *Server {
 	linkedinConfig := linkedin.NewConfig(
 		cfg.LinkedIn.ClientID,
 		cfg.LinkedIn.ClientSecret,
 		cfg.LinkedIn.RedirectURL,
 	)
 
-	return &AuthServer{
+	return &Server{
 		client: linkedin.NewClient(linkedinConfig),
 		config: cfg,
 		done:   make(chan *linkedin.Client, 1),
 	}
 }
 
-func (a *AuthServer) StartOAuth() (*linkedin.Client, error) {
+// StartOAuth begins the OAuth authentication flow and returns an authenticated client.
+func (a *Server) StartOAuth() (*linkedin.Client, error) {
 	// Parse redirect URL to get port
 	redirectURL, err := url.Parse(a.config.LinkedIn.RedirectURL)
 	if err != nil {
@@ -85,7 +89,7 @@ func (a *AuthServer) StartOAuth() (*linkedin.Client, error) {
 	}
 }
 
-func (a *AuthServer) handleHome(w http.ResponseWriter, r *http.Request) {
+func (a *Server) handleHome(w http.ResponseWriter, _ *http.Request) {
 	html := `
 <!DOCTYPE html>
 <html>
@@ -106,13 +110,15 @@ func (a *AuthServer) handleHome(w http.ResponseWriter, r *http.Request) {
     </div>
 </body>
 </html>`
+
 	w.Header().Set("Content-Type", "text/html")
+
 	if _, err := w.Write([]byte(html)); err != nil {
 		log.Printf("Failed to write response: %v", err)
 	}
 }
 
-func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
+func (a *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
@@ -127,7 +133,10 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Exchange code for token
-	token, err := a.client.ExchangeToken(context.Background(), code)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	token, err := a.client.ExchangeToken(ctx, code)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to exchange token: %v", err), http.StatusInternalServerError)
 		return
@@ -140,7 +149,7 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user profile to save user ID
-	profile, err := a.client.GetProfile(context.Background())
+	profile, err := a.client.GetProfile(ctx)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get profile: %v", err), http.StatusInternalServerError)
 		return
@@ -173,6 +182,7 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 </html>`
 
 	w.Header().Set("Content-Type", "text/html")
+
 	if _, err := w.Write([]byte(html)); err != nil {
 		log.Printf("Failed to write response: %v", err)
 	}
@@ -181,10 +191,11 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	a.done <- a.client
 }
 
-func (a *AuthServer) shutdown() {
+func (a *Server) shutdown() {
 	if a.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
+
 		if err := a.server.Shutdown(ctx); err != nil {
 			log.Printf("Failed to shutdown server: %v", err)
 		}

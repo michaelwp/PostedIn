@@ -1,3 +1,4 @@
+// Package config provides application configuration management for LinkedIn Post Scheduler.
 package config
 
 import (
@@ -17,6 +18,7 @@ const (
 	restrictedPerm   = 0o600
 )
 
+// Config represents the main application configuration structure.
 type Config struct {
 	LinkedIn LinkedInConfig `json:"linkedin"`
 	Storage  StorageConfig  `json:"storage"`
@@ -24,6 +26,7 @@ type Config struct {
 	Cron     CronConfig     `json:"cron"`
 }
 
+// LinkedInConfig holds LinkedIn OAuth configuration settings.
 type LinkedInConfig struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
@@ -31,25 +34,32 @@ type LinkedInConfig struct {
 	UserID       string `json:"user_id,omitempty"`
 }
 
+// StorageConfig defines file paths for data storage.
 type StorageConfig struct {
 	PostsFile string `json:"posts_file"`
 	TokenFile string `json:"token_file"`
 }
 
+// TimezoneConfig specifies timezone settings for post scheduling.
 type TimezoneConfig struct {
 	Location string `json:"location"`
 	Offset   string `json:"offset"`
 }
 
+// CronConfig controls automatic post scheduling functionality.
 type CronConfig struct {
 	Enabled bool `json:"enabled"`
 }
 
 const (
-	ConfigFile = "config.json"
-	TokenFile  = "linkedin_token.json"
+	BaseConfigPath = "./internal/config"
+	// ConfigFile is the default configuration file name.
+	ConfigFile = BaseConfigPath + "/config.json"
+	// TokenFile is the default OAuth token file name.
+	TokenFile = BaseConfigPath + "/linkedin_token.json"
 )
 
+// LoadConfig loads application configuration from the config file or creates default configuration.
 func LoadConfig() (*Config, error) {
 	// Check if config file exists
 	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
@@ -106,6 +116,7 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
+// SaveConfig saves the configuration to the config file.
 func SaveConfig(config *Config) error {
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
@@ -115,9 +126,10 @@ func SaveConfig(config *Config) error {
 	return os.WriteFile(ConfigFile, data, restrictedPerm)
 }
 
+// LoadToken loads an OAuth token from the specified file.
 func LoadToken(filename string) (*oauth2.Token, error) {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return nil, nil // No token file exists
+		return nil, fmt.Errorf("token file does not exist: %s", filename)
 	}
 
 	data, err := os.ReadFile(filename)
@@ -133,6 +145,7 @@ func LoadToken(filename string) (*oauth2.Token, error) {
 	return &token, nil
 }
 
+// SaveToken saves an OAuth token to the specified file.
 func SaveToken(token *oauth2.Token, filename string) error {
 	data, err := json.MarshalIndent(token, "", "  ")
 	if err != nil {
@@ -148,6 +161,7 @@ func (c *Config) GetTimezone() (*time.Location, error) {
 		// Default to UTC+7 if not configured
 		return time.LoadLocation("Asia/Bangkok")
 	}
+
 	return time.LoadLocation(c.Timezone.Location)
 }
 
@@ -157,6 +171,7 @@ func (c *Config) Now() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
+
 	return time.Now().In(loc), nil
 }
 
@@ -168,6 +183,7 @@ func (c *Config) ParseTimeInTimezone(dateStr, timeStr string) (time.Time, error)
 	}
 
 	dateTimeStr := dateStr + " " + timeStr
+
 	parsedTime, err := time.ParseInLocation("2006-01-02 15:04", dateTimeStr, loc)
 	if err != nil {
 		return time.Time{}, err
@@ -223,7 +239,7 @@ func (c *Config) GetTimezoneInfo() (string, error) {
 }
 
 // GetCommonTimezones returns commonly used timezones.
-func GetCommonTimezones() []timezone.TimezoneInfo {
+func GetCommonTimezones() []timezone.Info {
 	return timezone.GetCommonTimezones()
 }
 

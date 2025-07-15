@@ -1,3 +1,4 @@
+// Package cron provides automated scheduling functionality for LinkedIn posts using cron jobs.
 package cron
 
 import (
@@ -7,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/robfig/cron/v3"
-
 	"PostedIn/internal/config"
 	"PostedIn/internal/models"
 	"PostedIn/internal/scheduler"
+
+	"github.com/robfig/cron/v3"
 )
 
 const (
@@ -27,8 +28,8 @@ type PostTimer struct {
 	Timer  *time.Timer
 }
 
-// CronScheduler manages automatic post publishing using timers and cron jobs.
-type CronScheduler struct {
+// Scheduler manages automatic post publishing using timers and cron jobs.
+type Scheduler struct {
 	cron      *cron.Cron
 	scheduler *scheduler.Scheduler
 	config    *config.Config
@@ -37,12 +38,13 @@ type CronScheduler struct {
 	timersMux sync.RWMutex       // Protect timers map
 }
 
-// NewCronScheduler creates a new cron-based scheduler.
-func NewCronScheduler(s *scheduler.Scheduler, cfg *config.Config) *CronScheduler {
+// NewScheduler creates a new cron-based scheduler.
+func NewScheduler(s *scheduler.Scheduler, cfg *config.Config) *Scheduler {
 	// Get the user's configured timezone
 	loc, err := cfg.GetTimezone()
 	if err != nil {
 		log.Printf("⚠️ Failed to get user timezone, using UTC: %v", err)
+
 		loc = time.UTC
 	}
 
@@ -54,7 +56,7 @@ func NewCronScheduler(s *scheduler.Scheduler, cfg *config.Config) *CronScheduler
 
 	log.Printf("🌍 Cron scheduler initialized with timezone: %s", loc.String())
 
-	return &CronScheduler{
+	return &Scheduler{
 		cron:      c,
 		scheduler: s,
 		config:    cfg,
@@ -64,7 +66,7 @@ func NewCronScheduler(s *scheduler.Scheduler, cfg *config.Config) *CronScheduler
 }
 
 // Start begins the cron scheduler.
-func (cs *CronScheduler) Start() error {
+func (cs *Scheduler) Start() error {
 	if cs.running {
 		return fmt.Errorf("cron scheduler is already running")
 	}
@@ -79,11 +81,12 @@ func (cs *CronScheduler) Start() error {
 	cs.running = true
 
 	log.Println("✅ Auto-scheduler started - posts will be published at their exact scheduled times")
+
 	return nil
 }
 
 // Stop stops the cron scheduler and all timers.
-func (cs *CronScheduler) Stop() {
+func (cs *Scheduler) Stop() {
 	if !cs.running {
 		return
 	}
@@ -94,6 +97,7 @@ func (cs *CronScheduler) Stop() {
 		timer.Timer.Stop()
 		log.Printf("🛑 Stopped timer for post %d", postID)
 	}
+
 	cs.timers = make(map[int]*PostTimer) // Clear the map
 	cs.timersMux.Unlock()
 
@@ -110,12 +114,12 @@ func (cs *CronScheduler) Stop() {
 }
 
 // IsRunning returns whether the cron scheduler is currently running.
-func (cs *CronScheduler) IsRunning() bool {
+func (cs *Scheduler) IsRunning() bool {
 	return cs.running
 }
 
 // UpdateConfig updates the cron configuration and restarts if necessary.
-func (cs *CronScheduler) UpdateConfig(cfg *config.Config) error {
+func (cs *Scheduler) UpdateConfig(cfg *config.Config) error {
 	wasRunning := cs.running
 
 	if wasRunning {
@@ -128,6 +132,7 @@ func (cs *CronScheduler) UpdateConfig(cfg *config.Config) error {
 	loc, err := cfg.GetTimezone()
 	if err != nil {
 		log.Printf("⚠️ Failed to get updated timezone, using UTC: %v", err)
+
 		loc = time.UTC
 	}
 
@@ -147,9 +152,10 @@ func (cs *CronScheduler) UpdateConfig(cfg *config.Config) error {
 }
 
 // scheduleAllPendingPosts schedules individual cron jobs for each pending post.
-func (cs *CronScheduler) scheduleAllPendingPosts() error {
+func (cs *Scheduler) scheduleAllPendingPosts() error {
 	posts := cs.scheduler.GetPosts()
 	scheduledCount := 0
+
 	var firstError error
 
 	for _, post := range posts {
@@ -159,23 +165,28 @@ func (cs *CronScheduler) scheduleAllPendingPosts() error {
 				if firstError == nil {
 					firstError = err
 				}
+
 				log.Printf("⚠️ Failed to schedule post %d: %v", post.ID, err)
+
 				continue
 			}
+
 			scheduledCount++
 		}
 	}
 
 	log.Printf("📅 Scheduled %d posts for automatic publishing", scheduledCount)
+
 	return firstError
 }
 
 // schedulePost schedules a single post for publishing at its exact time using timers.
-func (cs *CronScheduler) schedulePost(post *models.Post) error {
+func (cs *Scheduler) schedulePost(post *models.Post) error {
 	// Get the configured timezone
 	loc, err := cs.config.GetTimezone()
 	if err != nil {
 		log.Printf("⚠️ Failed to get timezone, using UTC: %v", err)
+
 		loc = time.UTC
 	}
 
@@ -238,7 +249,7 @@ func (cs *CronScheduler) schedulePost(post *models.Post) error {
 }
 
 // publishPost publishes a single post.
-func (cs *CronScheduler) publishPost(postID int) {
+func (cs *Scheduler) publishPost(postID int) {
 	log.Printf("📤 Auto-publishing post %d...", postID)
 
 	ctx, cancel := context.WithTimeout(context.Background(), publishTimeout)
@@ -253,12 +264,12 @@ func (cs *CronScheduler) publishPost(postID int) {
 }
 
 // isCronEnabled returns whether cron scheduling is enabled.
-func (cs *CronScheduler) isCronEnabled() bool {
+func (cs *Scheduler) isCronEnabled() bool {
 	return cs.config.Cron.Enabled
 }
 
 // AddNewPost adds a newly scheduled post to the cron scheduler.
-func (cs *CronScheduler) AddNewPost(post *models.Post) error {
+func (cs *Scheduler) AddNewPost(post *models.Post) error {
 	if !cs.running || post.Status != statusScheduled {
 		return nil
 	}
@@ -267,7 +278,7 @@ func (cs *CronScheduler) AddNewPost(post *models.Post) error {
 }
 
 // GetNextRun returns the next scheduled run time.
-func (cs *CronScheduler) GetNextRun() time.Time {
+func (cs *Scheduler) GetNextRun() time.Time {
 	if !cs.running {
 		return time.Time{}
 	}
@@ -276,6 +287,7 @@ func (cs *CronScheduler) GetNextRun() time.Time {
 	defer cs.timersMux.RUnlock()
 
 	var nextRun time.Time
+
 	posts := cs.scheduler.GetPosts()
 
 	for _, post := range posts {
@@ -292,7 +304,7 @@ func (cs *CronScheduler) GetNextRun() time.Time {
 }
 
 // GetStatus returns the current status of the cron scheduler.
-func (cs *CronScheduler) GetStatus() map[string]interface{} {
+func (cs *Scheduler) GetStatus() map[string]interface{} {
 	cs.timersMux.RLock()
 	timerCount := len(cs.timers)
 	cs.timersMux.RUnlock()
@@ -312,7 +324,7 @@ func (cs *CronScheduler) GetStatus() map[string]interface{} {
 }
 
 // CleanupCompletedJobs removes timers for posts that are no longer scheduled.
-func (cs *CronScheduler) CleanupCompletedJobs() {
+func (cs *Scheduler) CleanupCompletedJobs() {
 	if !cs.running {
 		return
 	}
@@ -329,6 +341,7 @@ func (cs *CronScheduler) CleanupCompletedJobs() {
 			if timer, exists := cs.timers[post.ID]; exists {
 				timer.Timer.Stop()
 				delete(cs.timers, post.ID)
+
 				removedCount++
 			}
 
@@ -342,29 +355,5 @@ func (cs *CronScheduler) CleanupCompletedJobs() {
 
 	if removedCount > 0 {
 		log.Printf("🧹 Cleaned up %d completed timers", removedCount)
-	}
-}
-
-// RemovePostTimers removes timers for specific post IDs (used when posts are deleted).
-func (cs *CronScheduler) RemovePostTimers(postIDs []int) {
-	if !cs.running || len(postIDs) == 0 {
-		return
-	}
-
-	cs.timersMux.Lock()
-	defer cs.timersMux.Unlock()
-
-	removedCount := 0
-	for _, postID := range postIDs {
-		if timer, exists := cs.timers[postID]; exists {
-			timer.Timer.Stop()
-			delete(cs.timers, postID)
-			removedCount++
-			log.Printf("🗑️ Removed timer for deleted post %d", postID)
-		}
-	}
-
-	if removedCount > 0 {
-		log.Printf("🧹 Removed %d timers for deleted posts", removedCount)
 	}
 }

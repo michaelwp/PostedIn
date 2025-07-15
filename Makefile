@@ -10,11 +10,11 @@ GOMOD=$(GOCMD) mod
 
 # Binary info
 BINARY_NAME=linkedin-scheduler
-CALLBACK_BINARY_NAME=callback-server
+WEB_API_BINARY_NAME=web-api-server
 BINARY_PATH=bin/$(BINARY_NAME)
-CALLBACK_BINARY_PATH=bin/$(CALLBACK_BINARY_NAME)
+WEB_API_BINARY_PATH=bin/$(WEB_API_BINARY_NAME)
 MAIN_PATH=cmd/scheduler/main.go
-CALLBACK_MAIN_PATH=cmd/callback-server/main.go
+WEB_API_MAIN_PATH=cmd/web-api/main.go
 
 # Default target
 .DEFAULT_GOAL := help
@@ -26,15 +26,15 @@ build:
 	$(GOBUILD) -o $(BINARY_PATH) $(MAIN_PATH)
 	@echo "Binary created at $(BINARY_PATH)"
 
-# Build the callback server
-build-callback:
-	@echo "Building $(CALLBACK_BINARY_NAME)..."
+# Build the web API server
+build-web-api:
+	@echo "Building $(WEB_API_BINARY_NAME)..."
 	@mkdir -p bin
-	$(GOBUILD) -o $(CALLBACK_BINARY_PATH) $(CALLBACK_MAIN_PATH)
-	@echo "Binary created at $(CALLBACK_BINARY_PATH)"
+	$(GOBUILD) -o $(WEB_API_BINARY_PATH) $(WEB_API_MAIN_PATH)
+	@echo "Binary created at $(WEB_API_BINARY_PATH)"
 
 # Build all binaries
-build-all: build build-callback
+build-all: build build-web-api
 	@echo "All binaries built successfully"
 
 # Run the main application
@@ -42,26 +42,26 @@ run:
 	@echo "Running $(BINARY_NAME)..."
 	$(GOCMD) run $(MAIN_PATH)
 
-# Run the callback server
-run-callback:
-	@echo "Running $(CALLBACK_BINARY_NAME)..."
-	$(GOCMD) run $(CALLBACK_MAIN_PATH)
+# Run the web API server
+run-web-api:
+	@echo "Running $(WEB_API_BINARY_NAME)..."
+	$(GOCMD) run $(WEB_API_MAIN_PATH)
 
 # Run the built main binary
 run-bin: build
 	@echo "Running built binary..."
 	./$(BINARY_PATH)
 
-# Run the built callback server binary
-run-callback-bin: build-callback
-	@echo "Running built callback server..."
-	./$(CALLBACK_BINARY_PATH)
+# Run the built web API server binary
+run-web-api-bin: build-web-api
+	@echo "Running built web API server..."
+	./$(WEB_API_BINARY_PATH)
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
 	$(GOCLEAN)
-	@rm -f $(BINARY_PATH) $(CALLBACK_BINARY_PATH)
+	@rm -f $(BINARY_PATH) $(WEB_API_BINARY_PATH)
 	@echo "Clean completed"
 
 # Format Go code
@@ -80,6 +80,12 @@ lint:
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Installing..."; go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; }
 	golangci-lint run
 
+# Run golangci-lint with auto-fix
+lint-fix:
+	@echo "Running golangci-lint with auto-fix..."
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Installing..."; go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; }
+	golangci-lint run --fix
+
 # Run tests
 test:
 	@echo "Running tests..."
@@ -93,6 +99,10 @@ tidy:
 # Development workflow
 dev: fmt vet lint build
 	@echo "Development build completed"
+
+# Development workflow with auto-fix
+dev-fix: fmt vet lint-fix build
+	@echo "Development build with auto-fix completed"
 
 # Install dependencies
 deps:
@@ -111,26 +121,40 @@ start-daemon: build
 	@echo "Use Ctrl+C to stop the daemon"
 	./$(BINARY_PATH)
 
+# Generate Swagger docs
+swagger:
+	@echo "Generating Swagger docs..."
+	go run github.com/swaggo/swag/cmd/swag init -g cmd/web-api/main.go --output docs
+
+# Clean Swagger docs
+docs-clean:
+	@echo "Cleaning Swagger docs..."
+	rm -rf docs
+
 # Show help
 help:
 	@echo "Available targets:"
 	@echo "  build             - Build the main application"
-	@echo "  build-callback    - Build the callback server"
-	@echo "  build-all         - Build both applications"
+	@echo "  build-web-api     - Build the web API server (includes OAuth callback)"
+	@echo "  build-all         - Build all applications"
 	@echo "  run               - Run the main application directly"
-	@echo "  run-callback      - Run the callback server directly"
+	@echo "  run-web-api       - Run the web API server directly"
 	@echo "  run-bin           - Build and run the main binary"
-	@echo "  run-callback-bin  - Build and run the callback server binary"
+	@echo "  run-web-api-bin   - Build and run the web API server binary"
 	@echo "  clean             - Clean build artifacts"
 	@echo "  fmt               - Format Go code"
 	@echo "  vet               - Run go vet"
 	@echo "  lint              - Run golangci-lint"
+	@echo "  lint-fix          - Run golangci-lint with auto-fix"
 	@echo "  test              - Run tests"
 	@echo "  tidy              - Tidy Go modules"
 	@echo "  dev               - Format, vet, lint, and build (development workflow)"
+	@echo "  dev-fix           - Format, vet, lint with auto-fix, and build"
 	@echo "  deps              - Install dependencies"
 	@echo "  pre-commit        - Run pre-commit checks manually"
 	@echo "  start-daemon      - Start scheduler daemon with auto-publishing"
+	@echo "  swagger           - Generate Swagger docs"
+	@echo "  docs-clean        - Remove generated Swagger docs"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-callback build-all run run-callback run-bin run-callback-bin clean fmt vet lint test tidy dev deps pre-commit start-daemon help
+.PHONY: build build-web-api build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean help

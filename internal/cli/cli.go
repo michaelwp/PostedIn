@@ -1,3 +1,4 @@
+// Package cli provides command-line interface functionality for the LinkedIn Post Scheduler.
 package cli
 
 import (
@@ -23,13 +24,15 @@ const (
 	statusFailed    = "failed"
 )
 
+// CLI provides command-line interface functionality for managing LinkedIn posts.
 type CLI struct {
 	scheduler     *scheduler.Scheduler
-	cronScheduler *cron.CronScheduler
+	cronScheduler *cron.Scheduler
 	reader        *bufio.Reader
 }
 
-func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.CronScheduler) *CLI {
+// NewCLI creates a new command-line interface instance.
+func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.Scheduler) *CLI {
 	return &CLI{
 		scheduler:     scheduler,
 		cronScheduler: cronScheduler,
@@ -37,6 +40,7 @@ func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.CronScheduler) *
 	}
 }
 
+// Run starts the command-line interface main loop.
 func (c *CLI) Run() {
 	fmt.Println("🔗 LinkedIn Post Scheduler")
 	fmt.Println("==========================")
@@ -262,59 +266,17 @@ func (c *CLI) checkDuePosts() {
 }
 
 func (c *CLI) deletePost() {
-	fmt.Println("\nDelete Posts")
-	fmt.Println("============")
-	fmt.Println("Enter one or more post IDs to delete:")
-	fmt.Println("- Single post: 5")
-	fmt.Println("- Multiple posts: 1,3,5 or 1 3 5")
-	fmt.Println()
+	idStr := c.getInput("Enter post ID to delete: ")
 
-	idStr := c.getInput("Enter post ID(s): ")
-	if strings.TrimSpace(idStr) == "" {
-		fmt.Println("No IDs provided.")
-		return
-	}
-
-	// Parse multiple IDs (support both comma-separated and space-separated)
-	ids, err := c.parsePostIDs(idStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		fmt.Printf("Error parsing IDs: %v\n", err)
+		fmt.Println("Invalid ID format.")
 		return
 	}
 
-	if len(ids) == 0 {
-		fmt.Println("No valid IDs provided.")
-		return
-	}
-
-	// Show confirmation for multiple posts
-	if len(ids) > 1 {
-		fmt.Printf("You are about to delete %d posts with IDs: %v\n", len(ids), ids)
-		confirm := c.getInput("Are you sure? (y/N): ")
-		if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-			fmt.Println("Deletion cancelled.")
-			return
-		}
-	}
-
-	// Delete posts
-	if len(ids) == 1 {
-		err = c.scheduler.DeletePost(ids[0])
-		// Clean up timer for single post
-		if err == nil && c.cronScheduler != nil {
-			c.cronScheduler.RemovePostTimers([]int{ids[0]})
-		}
-	} else {
-		err = c.scheduler.DeleteMultiplePosts(ids)
-		// Clean up timers for multiple posts
-		if err == nil && c.cronScheduler != nil {
-			c.cronScheduler.RemovePostTimers(ids)
-		}
-	}
-
+	err = c.scheduler.DeletePost(id)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
-		return
 	}
 }
 
@@ -326,7 +288,7 @@ func (c *CLI) authenticateLinkedIn() {
 		return
 	}
 
-	authServer := auth.NewAuthServer(cfg)
+	authServer := auth.NewServer(cfg)
 	_, err = authServer.StartOAuth()
 	if err != nil {
 		fmt.Printf("Authentication failed: %v\n", err)
@@ -576,50 +538,6 @@ func (c *CLI) formatDuration(d time.Duration) string {
 	}
 }
 
-func (c *CLI) parsePostIDs(input string) ([]int, error) {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return nil, fmt.Errorf("empty input")
-	}
-
-	var ids []int
-	var parts []string
-
-	// Support both comma-separated and space-separated formats
-	if strings.Contains(input, ",") {
-		parts = strings.Split(input, ",")
-	} else {
-		parts = strings.Fields(input)
-	}
-
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
-		id, err := strconv.Atoi(part)
-		if err != nil {
-			return nil, fmt.Errorf("invalid ID format: '%s'", part)
-		}
-
-		if id <= 0 {
-			return nil, fmt.Errorf("invalid ID: %d (must be positive)", id)
-		}
-
-		// Check for duplicates
-		for _, existingID := range ids {
-			if existingID == id {
-				return nil, fmt.Errorf("duplicate ID: %d", id)
-			}
-		}
-
-		ids = append(ids, id)
-	}
-
-	return ids, nil
-}
-
 // ensureCronRunning automatically starts the cron scheduler if not already running.
 func (c *CLI) ensureCronRunning() {
 	if c.cronScheduler == nil {
@@ -692,7 +610,7 @@ func (c *CLI) showCronStatus() {
 	}
 	fmt.Printf("Current time: %s\n", currentTime.Format("2006-01-02 15:04:05 MST"))
 
-	if status["running"].(bool) {
+	if running, ok := status["running"].(bool); ok && running {
 		fmt.Printf("Active jobs: %v\n", status["entries"])
 
 		// Get all posts and categorize them
@@ -792,8 +710,7 @@ func (c *CLI) showCronStatus() {
 		}
 
 		// Show next cron execution time
-		nextRun := status["next_run"].(time.Time)
-		if !nextRun.IsZero() {
+		if nextRun, ok := status["next_run"].(time.Time); ok && !nextRun.IsZero() {
 			// The nextRun time is already in the correct timezone
 			fmt.Printf("\nNext execution: %s\n", nextRun.Format("2006-01-02 15:04:05 MST"))
 		}

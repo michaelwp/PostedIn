@@ -2,9 +2,9 @@
 bin/
 
 # Configuration and data files
-config.json
-posts.json
-linkedin_token.json
+internal/config/config.json
+internal/models/posts.json
+internal/config/linkedin_token.json
 
 # IDE files
 .vscode/
@@ -14,3 +14,5 @@ linkedin_token.json
 .DS_Store
 Thumbs.db
 .claude
+
+vendor
