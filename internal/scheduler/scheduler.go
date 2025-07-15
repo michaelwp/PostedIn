@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"PostedIn/internal/config"
@@ -75,7 +76,7 @@ func (s *Scheduler) AddPost(content string, scheduledAt time.Time, cfg *config.C
 	if err != nil {
 		loc = time.UTC
 	}
-	
+
 	fmt.Printf("Post scheduled with ID %d for %s\n", post.ID, scheduledAt.In(loc).Format("2006-01-02 15:04 MST"))
 	return nil
 }
@@ -86,17 +87,83 @@ func (s *Scheduler) GetPosts() []models.Post {
 
 func (s *Scheduler) DeletePost(id int) error {
 	for i, post := range s.Posts {
-		if post.ID == id {
-			s.Posts = append(s.Posts[:i], s.Posts[i+1:]...)
-			err := s.savePosts()
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Post %d deleted.\n", id)
-			return nil
+		if post.ID != id {
+			continue
 		}
+		s.Posts = append(s.Posts[:i], s.Posts[i+1:]...)
+		err := s.savePosts()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Post %d deleted.\n", id)
+		return nil
 	}
 	return fmt.Errorf("post %d not found", id)
+}
+
+func (s *Scheduler) DeleteMultiplePosts(ids []int) error {
+	if len(ids) == 0 {
+		return fmt.Errorf("no post IDs provided")
+	}
+
+	// Track which posts were found and deleted
+	deletedCount := 0
+	notFoundIDs := []int{}
+
+	// Create a map for faster lookup
+	idsToDelete := make(map[int]bool)
+	for _, id := range ids {
+		idsToDelete[id] = true
+	}
+
+	// Filter out posts that should be deleted
+	var remainingPosts []models.Post
+	for _, post := range s.Posts {
+		if idsToDelete[post.ID] {
+			deletedCount++
+			fmt.Printf("Post %d deleted.\n", post.ID)
+		} else {
+			remainingPosts = append(remainingPosts, post)
+		}
+	}
+
+	// Check for any IDs that weren't found
+	for _, id := range ids {
+		found := false
+		for _, post := range s.Posts {
+			if post.ID == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			notFoundIDs = append(notFoundIDs, id)
+		}
+	}
+
+	// Update the posts list
+	s.Posts = remainingPosts
+
+	// Save the changes
+	err := s.savePosts()
+	if err != nil {
+		return fmt.Errorf("failed to save posts after deletion: %w", err)
+	}
+
+	// Report results
+	if deletedCount > 0 {
+		fmt.Printf("✅ Successfully deleted %d post(s).\n", deletedCount)
+	}
+
+	if len(notFoundIDs) > 0 {
+		fmt.Printf("⚠️ Could not find post(s) with ID(s): %v\n", notFoundIDs)
+	}
+
+	if deletedCount == 0 {
+		return fmt.Errorf("no posts were deleted")
+	}
+
+	return nil
 }
 
 func (s *Scheduler) MarkAsPosted(id int) error {
@@ -109,9 +176,19 @@ func (s *Scheduler) MarkAsPosted(id int) error {
 	return fmt.Errorf("post %d not found", id)
 }
 
+func (s *Scheduler) UpdatePostCronEntry(id, cronEntryID int) error {
+	for i, post := range s.Posts {
+		if post.ID == id {
+			s.Posts[i].CronEntryID = cronEntryID
+			return s.savePosts()
+		}
+	}
+	return fmt.Errorf("post %d not found", id)
+}
+
 func (s *Scheduler) GetDuePosts(cfg *config.Config) []models.Post {
 	var duePosts []models.Post
-	
+
 	// Use timezone-aware current time
 	now, err := cfg.Now()
 	if err != nil {
@@ -173,7 +250,9 @@ func (s *Scheduler) PublishToLinkedIn(ctx context.Context, postID int, cfg *conf
 	err = client.CreatePost(ctx, post.Content, cfg.LinkedIn.UserID)
 	if err != nil {
 		post.Status = "failed"
-		s.savePosts()
+		if saveErr := s.savePosts(); saveErr != nil {
+			log.Printf("Failed to save posts after publish failure: %v", saveErr)
+		}
 		return fmt.Errorf("failed to publish to LinkedIn: %w", err)
 	}
 

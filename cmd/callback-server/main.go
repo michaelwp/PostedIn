@@ -65,7 +65,7 @@ func main() {
 	}
 }
 
-// maskString masks all but the first 4 characters of a string for logging
+// maskString masks all but the first 4 characters of a string for logging.
 func maskString(s string) string {
 	if len(s) <= 4 {
 		return "****"

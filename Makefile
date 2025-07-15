@@ -74,6 +74,12 @@ vet:
 	@echo "Running go vet..."
 	$(GOVET) ./...
 
+# Run golangci-lint
+lint:
+	@echo "Running golangci-lint..."
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Installing..."; go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; }
+	golangci-lint run
+
 # Run tests
 test:
 	@echo "Running tests..."
@@ -85,13 +91,25 @@ tidy:
 	$(GOMOD) tidy
 
 # Development workflow
-dev: fmt vet build
+dev: fmt vet lint build
 	@echo "Development build completed"
 
 # Install dependencies
 deps:
 	@echo "Installing dependencies..."
 	$(GOMOD) download
+
+# Run pre-commit checks manually
+pre-commit:
+	@echo "Running pre-commit checks..."
+	@.git/hooks/pre-commit
+
+# Start scheduler daemon (automatically manages scheduled posts)
+start-daemon: build
+	@echo "Starting LinkedIn scheduler daemon..."
+	@echo "Auto-scheduling is enabled - posts will be published automatically"
+	@echo "Use Ctrl+C to stop the daemon"
+	./$(BINARY_PATH)
 
 # Show help
 help:
@@ -106,10 +124,13 @@ help:
 	@echo "  clean             - Clean build artifacts"
 	@echo "  fmt               - Format Go code"
 	@echo "  vet               - Run go vet"
+	@echo "  lint              - Run golangci-lint"
 	@echo "  test              - Run tests"
 	@echo "  tidy              - Tidy Go modules"
-	@echo "  dev               - Format, vet, and build (development workflow)"
+	@echo "  dev               - Format, vet, lint, and build (development workflow)"
 	@echo "  deps              - Install dependencies"
+	@echo "  pre-commit        - Run pre-commit checks manually"
+	@echo "  start-daemon      - Start scheduler daemon with auto-publishing"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-callback build-all run run-callback run-bin run-callback-bin clean fmt vet test tidy dev deps help
+.PHONY: build build-callback build-all run run-callback run-bin run-callback-bin clean fmt vet lint test tidy dev deps pre-commit start-daemon help

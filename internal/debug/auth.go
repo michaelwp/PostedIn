@@ -13,29 +13,29 @@ func ValidateLinkedInConfig(cfg *config.Config) error {
 	if cfg.LinkedIn.ClientID == "" {
 		return fmt.Errorf("LinkedIn Client ID is empty")
 	}
-	
+
 	if cfg.LinkedIn.ClientSecret == "" {
 		return fmt.Errorf("LinkedIn Client Secret is empty")
 	}
-	
+
 	if cfg.LinkedIn.RedirectURL == "" {
 		return fmt.Errorf("LinkedIn Redirect URL is empty")
 	}
-	
+
 	// Validate redirect URL format
 	parsedURL, err := url.Parse(cfg.LinkedIn.RedirectURL)
 	if err != nil {
 		return fmt.Errorf("invalid redirect URL format: %w", err)
 	}
-	
+
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return fmt.Errorf("redirect URL must use http or https scheme")
 	}
-	
+
 	if parsedURL.Host == "" {
 		return fmt.Errorf("redirect URL must have a valid host")
 	}
-	
+
 	return nil
 }
 
@@ -44,7 +44,7 @@ func PrintAuthDetails(cfg *config.Config) {
 	fmt.Println("=====================================")
 	fmt.Printf("Client ID: %s\n", maskString(cfg.LinkedIn.ClientID))
 	fmt.Printf("Redirect URL: %s\n", cfg.LinkedIn.RedirectURL)
-	
+
 	// Create LinkedIn client and get auth URL
 	linkedinConfig := linkedin.NewConfig(
 		cfg.LinkedIn.ClientID,
@@ -53,19 +53,19 @@ func PrintAuthDetails(cfg *config.Config) {
 	)
 	client := linkedin.NewClient(linkedinConfig)
 	authURL := client.GetAuthURL("linkedin-auth-state")
-	
+
 	fmt.Printf("Full Auth URL: %s\n", authURL)
-	
+
 	// Parse and validate the auth URL
 	parsedURL, err := url.Parse(authURL)
 	if err != nil {
 		fmt.Printf("❌ Error parsing auth URL: %v\n", err)
 		return
 	}
-	
+
 	fmt.Println("\n📋 Auth URL Components:")
 	fmt.Printf("  Base URL: %s://%s%s\n", parsedURL.Scheme, parsedURL.Host, parsedURL.Path)
-	
+
 	queryParams := parsedURL.Query()
 	for key, values := range queryParams {
 		if key == "client_id" {
@@ -74,7 +74,7 @@ func PrintAuthDetails(cfg *config.Config) {
 			fmt.Printf("  %s: %s\n", key, strings.Join(values, ", "))
 		}
 	}
-	
+
 	// Validate required parameters
 	fmt.Println("\n✅ Required Parameters Check:")
 	checkParam(queryParams, "client_id", "Client ID")
@@ -97,10 +97,16 @@ func checkParam(params url.Values, key, name string) {
 }
 
 func maskString(s string) string {
-	if len(s) <= 8 {
-		return "****"
+	const (
+		maxLength = 8
+		prefixLen = 4
+		suffixLen = 4
+		maskStr   = "****"
+	)
+	if len(s) <= maxLength {
+		return maskStr
 	}
-	return s[:4] + "****" + s[len(s)-4:]
+	return s[:prefixLen] + maskStr + s[len(s)-suffixLen:]
 }
 
 func PrintCommonIssues() {
