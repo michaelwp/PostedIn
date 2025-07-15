@@ -1,3 +1,4 @@
+// Package cli provides command-line interface functionality for the LinkedIn Post Scheduler.
 package cli
 
 import (
@@ -23,13 +24,15 @@ const (
 	statusFailed    = "failed"
 )
 
+// CLI provides command-line interface functionality for managing LinkedIn posts.
 type CLI struct {
 	scheduler     *scheduler.Scheduler
-	cronScheduler *cron.CronScheduler
+	cronScheduler *cron.Scheduler
 	reader        *bufio.Reader
 }
 
-func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.CronScheduler) *CLI {
+// NewCLI creates a new command-line interface instance.
+func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.Scheduler) *CLI {
 	return &CLI{
 		scheduler:     scheduler,
 		cronScheduler: cronScheduler,
@@ -37,6 +40,7 @@ func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.CronScheduler) *
 	}
 }
 
+// Run starts the command-line interface main loop.
 func (c *CLI) Run() {
 	fmt.Println("🔗 LinkedIn Post Scheduler")
 	fmt.Println("==========================")
@@ -284,7 +288,7 @@ func (c *CLI) authenticateLinkedIn() {
 		return
 	}
 
-	authServer := auth.NewAuthServer(cfg)
+	authServer := auth.NewServer(cfg)
 	_, err = authServer.StartOAuth()
 	if err != nil {
 		fmt.Printf("Authentication failed: %v\n", err)
@@ -606,7 +610,7 @@ func (c *CLI) showCronStatus() {
 	}
 	fmt.Printf("Current time: %s\n", currentTime.Format("2006-01-02 15:04:05 MST"))
 
-	if status["running"].(bool) {
+	if running, ok := status["running"].(bool); ok && running {
 		fmt.Printf("Active jobs: %v\n", status["entries"])
 
 		// Get all posts and categorize them
@@ -706,8 +710,7 @@ func (c *CLI) showCronStatus() {
 		}
 
 		// Show next cron execution time
-		nextRun := status["next_run"].(time.Time)
-		if !nextRun.IsZero() {
+		if nextRun, ok := status["next_run"].(time.Time); ok && !nextRun.IsZero() {
 			// The nextRun time is already in the correct timezone
 			fmt.Printf("\nNext execution: %s\n", nextRun.Format("2006-01-02 15:04:05 MST"))
 		}

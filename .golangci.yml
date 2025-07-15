@@ -1,6 +1,13 @@
 run:
   timeout: 5m
   modules-download-mode: readonly
+  allow-parallel-runners: true
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
 
 linters:
   enable:
@@ -30,6 +37,23 @@ linters:
     - sqlclosecheck
     - unparam
     - whitespace
+    - gofumpt
+    - revive
+    - stylecheck
+    - nlreturn
+    - wsl
+    - copyloopvar
+    - contextcheck
+    - durationcheck
+    - errorlint
+    - forcetypeassert
+    - makezero
+    - nilerr
+    - nilnil
+    - usetesting
+    - wastedassign
+    - predeclared
+    - reassign
 
 linters-settings:
   gocyclo:
@@ -59,17 +83,151 @@ linters-settings:
       - opinionated
       - performance
       - style
+  goimports:
+    local-prefixes: PostedIn
+  gofmt:
+    simplify: true
+  gofumpt:
+    extra-rules: true
+  misspell:
+    locale: US
+  revive:
+    severity: warning
+    confidence: 0.8
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+  stylecheck:
+    checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
+  whitespace:
+    multi-if: false
+    multi-func: false
+  wsl:
+    strict-append: true
+    allow-assign-and-call: true
+    allow-multiline-assign: true
+    allow-cuddle-declarations: false
+    allow-trailing-comment: false
+    force-case-trailing-whitespace: 0
+    force-err-cuddling: false
+    allow-separated-leading-comment: false
+  nlreturn:
+    block-size: 2
+  nakedret:
+    max-func-lines: 30
 
 issues:
   exclude-use-default: false
+  uniq-by-line: true
   exclude-rules:
+    # Exclude some linters from running on tests files
     - path: _test\.go
       linters:
         - mnd
         - goconst
+        - gocyclo
+        - godot
+        - wsl
+        - nlreturn
+        - funlen
+        - dupl
+        - lll
+        - gocritic
+        
+    # Exclude some linters from running on main files
     - path: cmd/
       linters:
         - mnd
+        - goconst
+        - wsl
+        - nlreturn
+        - funlen
+        
+    # Exclude some linters from running on CLI due to high complexity
     - path: internal/cli/cli.go
       linters:
         - gocyclo # CLI Run function naturally has high complexity due to menu options
+        - funlen
+        - wsl
+        - nlreturn
+        
+    # Exclude some linters from running on API handlers
+    - path: internal/api/
+      linters:
+        - lll
+        - wsl
+        - nlreturn
+        - funlen
+        
+    # Allow longer lines in HTML templates
+    - source: "html :="
+      linters:
+        - lll
+        
+    # Allow magic numbers in HTML and CSS
+    - source: "font-size:|padding:|margin:|width:|height:|rgba\\(|color:|border:"
+      linters:
+        - mnd
+        
+    # Allow magic numbers in HTTP status codes
+    - source: "Status(fiber\\.Status|http\\.Status)"
+      linters:
+        - mnd
+        
+    # Allow magic numbers in time constants
+    - source: "time\\.(Second|Minute|Hour|Millisecond|Microsecond|Nanosecond)"
+      linters:
+        - mnd
+        
+    # Allow longer functions in handlers
+    - path: internal/api/.*\.go
+      text: "Function.*is too long"
+      linters:
+        - funlen
+        
+    # Exclude context check for SetToken method (doesn't accept context)
+    - source: "client\\.SetToken\\(token\\)"
+      linters:
+        - contextcheck
+        
+  exclude-case-sensitive: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: true  # Enable auto-fix
+
+severity:
+  default-severity: error
+  case-sensitive: false
+  rules:
+    - linters:
+        - revive
+      severity: warning
+    - linters:
+        - stylecheck
+      severity: warning
+    - linters:
+        - godot
+      severity: warning

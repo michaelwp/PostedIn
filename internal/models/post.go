@@ -1,7 +1,9 @@
+// Package models defines data structures for LinkedIn posts and related entities.
 package models
 
 import "time"
 
+// Post represents a LinkedIn post with scheduling information.
 type Post struct {
 	ID          int       `json:"id"`
 	Content     string    `json:"content"`

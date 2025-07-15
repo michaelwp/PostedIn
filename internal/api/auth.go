@@ -1,130 +1,192 @@
+// Package api provides HTTP API handlers for authentication and OAuth functionality.
 package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"PostedIn/internal/config"
 	"PostedIn/pkg/linkedin"
+
+	"github.com/gofiber/fiber/v2"
+
+	debug "PostedIn/internal/debug"
 )
 
-const (
-	readTimeout     = 15 * time.Second
-	writeTimeout    = 15 * time.Second
-	idleTimeout     = 60 * time.Second
-	shutdownTimeout = 30 * time.Second
-)
-
-type Server struct {
-	config     *config.Config
-	httpServer *http.Server
-	port       string
-}
-
+// AuthResponse represents the response format for authentication.
 type AuthResponse struct {
 	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 	UserID  string `json:"user_id,omitempty"`
 }
 
-func NewServer(cfg *config.Config, port string) *Server {
-	return &Server{
-		config: cfg,
-		port:   port,
-	}
+// AuthStatusResponse represents the response format for auth status.
+type AuthStatusResponse struct {
+	Authenticated bool   `json:"authenticated"`
+	UserID        string `json:"user_id"`
+	ExpiresAt     string `json:"expires_at,omitempty"`
 }
 
-func (s *Server) Start() error {
-	mux := http.NewServeMux()
+// setupAuthRoutes configures all authentication-related routes.
+func (r *Router) setupAuthRoutes(api fiber.Router) {
+	auth := api.Group("/auth")
 
-	// OAuth callback endpoint
-	mux.HandleFunc("/callback", s.handleCallback)
-
-	// Health check endpoint
-	mux.HandleFunc("/health", s.handleHealth)
-
-	// Home page with auth button
-	mux.HandleFunc("/", s.handleHome)
-
-	// Static assets (if needed)
-	mux.HandleFunc("/static/", s.handleStatic)
-
-	s.httpServer = &http.Server{
-		Addr:         ":" + s.port,
-		Handler:      s.corsMiddleware(s.loggingMiddleware(mux)),
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-	}
-
-	log.Printf("🚀 Callback API server starting on port %s", s.port)
-	log.Printf("📍 OAuth callback URL: http://localhost:%s/callback", s.port)
-	log.Printf("🏠 Home page: http://localhost:%s/", s.port)
-
-	return s.httpServer.ListenAndServe()
+	auth.Get("/linkedin", r.getLinkedInAuthURL)
+	auth.Get("/status", r.getAuthStatus)
+	auth.Get("/debug", r.debugAuth)
 }
 
-func (s *Server) Stop(ctx context.Context) error {
-	log.Println("🛑 Shutting down callback API server...")
-	return s.httpServer.Shutdown(ctx)
+// getLinkedInAuthURL returns the LinkedIn OAuth authorization URL.
+func (r *Router) getLinkedInAuthURL(c *fiber.Ctx) error {
+	linkedinConfig := linkedin.NewConfig(
+		r.config.LinkedIn.ClientID,
+		r.config.LinkedIn.ClientSecret,
+		r.config.LinkedIn.RedirectURL,
+	)
+	client := linkedin.NewClient(linkedinConfig)
+	authURL := client.GetAuthURL("linkedin-auth-state")
+
+	return c.JSON(fiber.Map{
+		"success":  true,
+		"auth_url": authURL,
+	})
 }
 
-func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+// getAuthStatus checks the current LinkedIn authentication status.
+func (r *Router) getAuthStatus(c *fiber.Ctx) error {
+	token, err := config.LoadToken(r.config.Storage.TokenFile)
+	if err != nil || token == nil {
+		return c.JSON(fiber.Map{
+			"success": true,
+			"data": AuthStatusResponse{
+				Authenticated: false,
+				UserID:        "",
+			},
+		})
 	}
 
-	code := r.URL.Query().Get("code")
-	state := r.URL.Query().Get("state")
-	errorParam := r.URL.Query().Get("error")
+	response := AuthStatusResponse{
+		Authenticated: true,
+		UserID:        r.config.LinkedIn.UserID,
+	}
+
+	if !token.Expiry.IsZero() {
+		response.ExpiresAt = token.Expiry.Format("2006-01-02T15:04:05Z07:00")
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data":    response,
+	})
+}
+
+// debugAuth provides debugging information for LinkedIn authentication.
+func (r *Router) debugAuth(c *fiber.Ctx) error {
+	var issues []string
+	var info string
+
+	// Validate LinkedIn configuration
+	if err := debug.ValidateLinkedInConfig(r.config); err != nil {
+		issues = append(issues, "Configuration validation failed: "+err.Error())
+
+		// Capture PrintCommonIssues output
+		var sb strings.Builder
+		old := stdOutSwap(&sb)
+		debug.PrintCommonIssues()
+		resetStdOut(old)
+		issues = append(issues, sb.String())
+
+		return c.JSON(fiber.Map{
+			"success": false,
+			"issues":  issues,
+		})
+	}
+
+	// Capture PrintAuthDetails and PrintCommonIssues output
+	var sb strings.Builder
+	old := stdOutSwap(&sb)
+	debug.PrintAuthDetails(r.config)
+	debug.PrintCommonIssues()
+	resetStdOut(old)
+	info = sb.String()
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"info":    info,
+	})
+}
+
+// Helper functions to capture stdout.
+func stdOutSwap(w *strings.Builder) *os.File {
+	r, wPipe, _ := os.Pipe()
+	old := os.Stdout
+	os.Stdout = wPipe
+	go func() {
+		var buf [1024]byte
+		for {
+			n, err := r.Read(buf[:])
+			if n > 0 {
+				w.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+	return old
+}
+
+func resetStdOut(old *os.File) {
+	os.Stdout = old
+}
+
+// handleCallback handles the OAuth callback from LinkedIn.
+func (r *Router) handleCallback(c *fiber.Ctx) error {
+	code := c.Query("code")
+	state := c.Query("state")
+	errorParam := c.Query("error")
 
 	// Check for OAuth errors
 	if errorParam != "" {
-		errorDesc := r.URL.Query().Get("error_description")
-		s.renderError(w, fmt.Sprintf("LinkedIn OAuth Error: %s - %s", errorParam, errorDesc))
-		return
+		errorDesc := c.Query("error_description")
+		return r.renderError(c, fmt.Sprintf("LinkedIn OAuth Error: %s - %s", errorParam, errorDesc))
 	}
 
 	// Validate state parameter
 	if state != "linkedin-auth-state" {
-		s.renderError(w, "Invalid state parameter - possible CSRF attack")
-		return
+		return r.renderError(c, "Invalid state parameter - possible CSRF attack")
 	}
 
 	if code == "" {
-		s.renderError(w, "No authorization code received from LinkedIn")
-		return
+		return r.renderError(c, "No authorization code received from LinkedIn")
 	}
 
 	// Create LinkedIn client
 	linkedinConfig := linkedin.NewConfig(
-		s.config.LinkedIn.ClientID,
-		s.config.LinkedIn.ClientSecret,
-		s.config.LinkedIn.RedirectURL,
+		r.config.LinkedIn.ClientID,
+		r.config.LinkedIn.ClientSecret,
+		r.config.LinkedIn.RedirectURL,
 	)
 	client := linkedin.NewClient(linkedinConfig)
 
 	// Exchange code for token
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	token, err := client.ExchangeToken(ctx, code)
 	if err != nil {
 		log.Printf("❌ Token exchange failed: %v", err)
-		s.renderError(w, fmt.Sprintf("Failed to exchange authorization code: %v", err))
-		return
+		return r.renderError(c, fmt.Sprintf("Failed to exchange authorization code: %v", err))
 	}
 
 	// Save token
-	if err := config.SaveToken(token, s.config.Storage.TokenFile); err != nil {
+	if err := config.SaveToken(token, r.config.Storage.TokenFile); err != nil {
 		log.Printf("❌ Token save failed: %v", err)
-		s.renderError(w, fmt.Sprintf("Failed to save authentication token: %v", err))
-		return
+		return r.renderError(c, fmt.Sprintf("Failed to save authentication token: %v", err))
 	}
 
 	// Get user profile to save user ID
@@ -135,38 +197,28 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Save user ID to config
 		if id, ok := profile["sub"].(string); ok {
-			s.config.LinkedIn.UserID = id
-			if err := config.SaveConfig(s.config); err != nil {
+			r.config.LinkedIn.UserID = id
+			if err := config.SaveConfig(r.config); err != nil {
 				log.Printf("⚠️ Config save failed: %v", err)
 			}
 		}
 	}
 
 	log.Println("✅ LinkedIn authentication successful!")
-	s.renderSuccess(w, s.config.LinkedIn.UserID)
+	return r.renderSuccess(c, r.config.LinkedIn.UserID)
 }
 
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":    "healthy",
-		"timestamp": time.Now().UTC(),
-		"service":   "linkedin-callback-api",
-	}); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-	}
-}
-
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
+// handleHome displays the authentication page.
+func (r *Router) handleHome(c *fiber.Ctx) error {
+	// Only show auth page if we're on the root path
+	if c.Path() != "/" {
+		return c.Status(fiber.StatusNotFound).SendString("Not Found")
 	}
 
 	linkedinConfig := linkedin.NewConfig(
-		s.config.LinkedIn.ClientID,
-		s.config.LinkedIn.ClientSecret,
-		s.config.LinkedIn.RedirectURL,
+		r.config.LinkedIn.ClientID,
+		r.config.LinkedIn.ClientSecret,
+		r.config.LinkedIn.RedirectURL,
 	)
 	client := linkedin.NewClient(linkedinConfig)
 	authURL := client.GetAuthURL("linkedin-auth-state")
@@ -215,6 +267,13 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
             border-left: 4px solid #2196f3;
         }
         .step { margin: 10px 0; text-align: left; }
+        .api-info {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #007acc;
+        }
     </style>
 </head>
 <body>
@@ -231,26 +290,29 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
             <div class="step">2. Log in to your LinkedIn account</div>
             <div class="step">3. Authorize the PostedIn application</div>
             <div class="step">4. You'll be redirected back here with confirmation</div>
-            <div class="step">5. Return to the CLI app to start scheduling posts!</div>
+            <div class="step">5. Use the API or CLI app to start scheduling posts!</div>
         </div>
         
-        <p><small>This server handles OAuth callbacks securely and stores your authentication token locally.</small></p>
+        <div class="api-info">
+            <h3>🌐 API Endpoints Available:</h3>
+            <div class="step"><strong>GET /api/posts</strong> - List all posts</div>
+            <div class="step"><strong>POST /api/posts</strong> - Create new post</div>
+            <div class="step"><strong>GET /api/auth/status</strong> - Check auth status</div>
+            <div class="step"><strong>GET /health</strong> - Health check</div>
+            <div class="step">And many more... see documentation for full API</div>
+        </div>
+        
+        <p><small>This server handles OAuth callbacks securely and provides a full REST API for post management.</small></p>
     </div>
 </body>
 </html>`, authURL)
 
-	w.Header().Set("Content-Type", "text/html")
-	if _, err := w.Write([]byte(html)); err != nil {
-		log.Printf("Failed to write response: %v", err)
-	}
+	c.Set("Content-Type", "text/html")
+	return c.SendString(html)
 }
 
-func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
-	// Serve static files if needed in the future
-	http.NotFound(w, r)
-}
-
-func (s *Server) renderSuccess(w http.ResponseWriter, userID string) {
+// renderSuccess renders the success page after authentication.
+func (r *Router) renderSuccess(c *fiber.Ctx, userID string) error {
 	html := `
 <!DOCTYPE html>
 <html lang="en">
@@ -289,6 +351,13 @@ func (s *Server) renderSuccess(w http.ResponseWriter, userID string) {
             margin: 20px 0;
             border-left: 4px solid #2196f3;
         }
+        .api-link {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
     </style>
 </head>
 <body>
@@ -305,8 +374,14 @@ func (s *Server) renderSuccess(w http.ResponseWriter, userID string) {
         <div class="next-steps">
             <h3>🚀 Next Steps:</h3>
             <p>1. You can now close this browser window</p>
-            <p>2. Return to the CLI application</p>
+            <p>2. Use the CLI application or API endpoints</p>
             <p>3. Start scheduling and publishing LinkedIn posts!</p>
+        </div>
+        
+        <div class="api-link">
+            <h3>🌐 API Ready!</h3>
+            <p>The REST API is now authenticated and ready for use</p>
+            <p><strong>Base URL:</strong> ` + c.BaseURL() + `/api</p>
         </div>
         
         <p><small>Your authentication token has been saved securely on your local machine.</small></p>
@@ -314,13 +389,12 @@ func (s *Server) renderSuccess(w http.ResponseWriter, userID string) {
 </body>
 </html>`
 
-	w.Header().Set("Content-Type", "text/html")
-	if _, err := w.Write([]byte(html)); err != nil {
-		log.Printf("Failed to write response: %v", err)
-	}
+	c.Set("Content-Type", "text/html")
+	return c.SendString(html)
 }
 
-func (s *Server) renderError(w http.ResponseWriter, errorMsg string) {
+// renderError renders an error page.
+func (r *Router) renderError(c *fiber.Ctx, errorMsg string) error {
 	html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html lang="en">
@@ -394,34 +468,6 @@ func (s *Server) renderError(w http.ResponseWriter, errorMsg string) {
 </body>
 </html>`, errorMsg)
 
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusBadRequest)
-	if _, err := w.Write([]byte(html)); err != nil {
-		log.Printf("Failed to write response: %v", err)
-	}
-}
-
-// CORS middleware to handle cross-origin requests.
-func (s *Server) corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// Logging middleware to log all requests.
-func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("📥 %s %s %s", r.Method, r.URL.Path, time.Since(start))
-	})
+	c.Set("Content-Type", "text/html")
+	return c.Status(fiber.StatusBadRequest).SendString(html)
 }
