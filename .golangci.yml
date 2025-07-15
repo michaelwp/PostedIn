@@ -70,3 +70,6 @@ issues:
     - path: cmd/
       linters:
         - mnd
+    - path: internal/cli/cli.go
+      linters:
+        - gocyclo # CLI Run function naturally has high complexity due to menu options

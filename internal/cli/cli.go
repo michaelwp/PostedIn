@@ -11,19 +11,29 @@ import (
 
 	"PostedIn/internal/auth"
 	"PostedIn/internal/config"
+	"PostedIn/internal/cron"
 	"PostedIn/internal/debug"
+	"PostedIn/internal/models"
 	"PostedIn/internal/scheduler"
 )
 
+const (
+	statusScheduled = "scheduled"
+	statusPosted    = "posted"
+	statusFailed    = "failed"
+)
+
 type CLI struct {
-	scheduler *scheduler.Scheduler
-	reader    *bufio.Reader
+	scheduler     *scheduler.Scheduler
+	cronScheduler *cron.CronScheduler
+	reader        *bufio.Reader
 }
 
-func NewCLI(scheduler *scheduler.Scheduler) *CLI {
+func NewCLI(scheduler *scheduler.Scheduler, cronScheduler *cron.CronScheduler) *CLI {
 	return &CLI{
-		scheduler: scheduler,
-		reader:    bufio.NewReader(os.Stdin),
+		scheduler:     scheduler,
+		cronScheduler: cronScheduler,
+		reader:        bufio.NewReader(os.Stdin),
 	}
 }
 
@@ -33,7 +43,7 @@ func (c *CLI) Run() {
 
 	for {
 		c.showMenu()
-		choice := c.getInput("Select an option (1-10): ")
+		choice := c.getInput("Select an option (1-11): ")
 
 		switch choice {
 		case "1":
@@ -55,15 +65,32 @@ func (c *CLI) Run() {
 		case "9":
 			c.configureTimezone()
 		case "10":
+			c.showCronStatus()
+		case "11":
 			fmt.Println("Goodbye!")
+			c.cleanupAndExit()
 			return
 		default:
-			fmt.Println("Invalid option. Please select 1-10.")
+			fmt.Println("Invalid option. Please select 1-11.")
 		}
 	}
 }
 
 func (c *CLI) showMenu() {
+	// Load config to get timezone information
+	cfg, err := config.LoadConfig()
+	var timezoneDisplay string
+	if err != nil {
+		timezoneDisplay = "Unknown"
+	} else {
+		timezoneInfo, err := cfg.GetTimezoneInfo()
+		if err != nil {
+			timezoneDisplay = fmt.Sprintf("%s %s", cfg.Timezone.Location, cfg.Timezone.Offset)
+		} else {
+			timezoneDisplay = timezoneInfo
+		}
+	}
+
 	fmt.Println("\nOptions:")
 	fmt.Println("1. Schedule a new post")
 	fmt.Println("2. List scheduled posts")
@@ -73,8 +100,18 @@ func (c *CLI) showMenu() {
 	fmt.Println("6. Publish specific post to LinkedIn")
 	fmt.Println("7. Auto-publish all due posts")
 	fmt.Println("8. Debug LinkedIn authentication")
-	fmt.Println("9. Configure timezone")
-	fmt.Println("10. Exit")
+	fmt.Printf("9. Configure timezone (%s)\n", timezoneDisplay)
+	fmt.Println("10. Check auto-scheduler status")
+	fmt.Println("11. Exit")
+
+	// Show cron status if running
+	if c.cronScheduler != nil && c.cronScheduler.IsRunning() {
+		nextRun := c.cronScheduler.GetNextRun()
+		if !nextRun.IsZero() {
+			// The nextRun time is already in the user's timezone, just format it
+			fmt.Printf("📅 Auto-scheduler: ACTIVE (next run: %s)\n", nextRun.Format("15:04:05 MST"))
+		}
+	}
 }
 
 func (c *CLI) getInput(prompt string) string {
@@ -119,6 +156,36 @@ func (c *CLI) schedulePost() {
 	err = c.scheduler.AddPost(content, scheduledAt, cfg)
 	if err != nil {
 		fmt.Printf("Error scheduling post: %v\n", err)
+		return
+	}
+
+	fmt.Println("✅ Post scheduled successfully!")
+
+	// Auto-start cron scheduler if not already running
+	c.ensureCronRunning()
+
+	// Add the newly created post to the cron scheduler
+	if c.cronScheduler != nil && c.cronScheduler.IsRunning() {
+		// Get the most recently added post (it will have the highest ID)
+		posts := c.scheduler.GetPosts()
+		if len(posts) > 0 {
+			var newestPost *models.Post
+			for i := range posts {
+				if newestPost == nil || posts[i].ID > newestPost.ID {
+					newestPost = &posts[i]
+				}
+			}
+
+			if newestPost != nil && newestPost.Status == statusScheduled {
+				err = c.cronScheduler.AddNewPost(newestPost)
+				if err != nil {
+					fmt.Printf("⚠️ Warning: Failed to schedule cron job for post %d: %v\n", newestPost.ID, err)
+				} else {
+					fmt.Printf("🤖 Cron job created for automatic publishing at %s\n",
+						newestPost.ScheduledAt.Format("2006-01-02 15:04:05"))
+				}
+			}
+		}
 	}
 }
 
@@ -151,7 +218,7 @@ func (c *CLI) listPosts() {
 	fmt.Println("================")
 	for _, post := range posts {
 		status := post.Status
-		if post.Status == "scheduled" && !post.ScheduledAt.After(now) {
+		if post.Status == statusScheduled && !post.ScheduledAt.After(now) {
 			status = "ready to post"
 		}
 
@@ -437,4 +504,221 @@ func (c *CLI) truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+func (c *CLI) formatDuration(d time.Duration) string {
+	const (
+		minutesPerHour = 60
+		hoursPerDay    = 24
+	)
+
+	if d < 0 {
+		return "overdue"
+	}
+
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % minutesPerHour
+
+	switch {
+	case hours > hoursPerDay:
+		days := hours / hoursPerDay
+		hours %= hoursPerDay
+		return fmt.Sprintf("in %dd %dh", days, hours)
+	case hours > 0:
+		return fmt.Sprintf("in %dh %dm", hours, minutes)
+	case minutes > 0:
+		return fmt.Sprintf("in %dm", minutes)
+	default:
+		seconds := int(d.Seconds())
+		return fmt.Sprintf("in %ds", seconds)
+	}
+}
+
+// ensureCronRunning automatically starts the cron scheduler if not already running.
+func (c *CLI) ensureCronRunning() {
+	if c.cronScheduler == nil {
+		return
+	}
+
+	if c.cronScheduler.IsRunning() {
+		return
+	}
+
+	// Auto-enable cron in config if not enabled
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return
+	}
+
+	if !cfg.Cron.Enabled {
+		cfg.Cron.Enabled = true
+		if err := config.SaveConfig(cfg); err != nil {
+			return
+		}
+		if err := c.cronScheduler.UpdateConfig(cfg); err != nil {
+			return
+		}
+	}
+
+	// Start the cron scheduler
+	err = c.cronScheduler.Start()
+	if err == nil {
+		fmt.Println("🤖 Auto-scheduler started - your posts will be published automatically!")
+	}
+}
+
+func (c *CLI) showCronStatus() {
+	if c.cronScheduler == nil {
+		fmt.Println("❌ Auto-scheduler not initialized")
+		return
+	}
+
+	// Clean up completed jobs before showing status
+	c.cronScheduler.CleanupCompletedJobs()
+
+	// Load config to get timezone information
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		fmt.Printf("❌ Error loading config: %v\n", err)
+		return
+	}
+
+	status := c.cronScheduler.GetStatus()
+
+	fmt.Println("\n📋 Auto-Scheduler Status")
+	fmt.Println("=========================")
+	fmt.Printf("Enabled: %v\n", status["enabled"])
+	fmt.Printf("Running: %v\n", status["running"])
+	fmt.Printf("Mode: %s\n", status["mode"])
+
+	// Show timezone information
+	timezoneInfo, err := cfg.GetTimezoneInfo()
+	if err != nil {
+		fmt.Printf("Timezone: %s %s\n", cfg.Timezone.Location, cfg.Timezone.Offset)
+	} else {
+		fmt.Printf("Timezone: %s\n", timezoneInfo)
+	}
+
+	// Show current time in configured timezone
+	currentTime, err := cfg.Now()
+	if err != nil {
+		currentTime = time.Now()
+	}
+	fmt.Printf("Current time: %s\n", currentTime.Format("2006-01-02 15:04:05 MST"))
+
+	if status["running"].(bool) {
+		fmt.Printf("Active jobs: %v\n", status["entries"])
+
+		// Get all posts and categorize them
+		posts := c.scheduler.GetPosts()
+		scheduledPosts := []models.Post{}
+		postedPosts := []models.Post{}
+		failedPosts := []models.Post{}
+
+		for _, post := range posts {
+			switch post.Status {
+			case statusScheduled:
+				scheduledPosts = append(scheduledPosts, post)
+			case statusPosted:
+				postedPosts = append(postedPosts, post)
+			case statusFailed:
+				failedPosts = append(failedPosts, post)
+			}
+		}
+
+		fmt.Printf("Scheduled posts: %d\n", len(scheduledPosts))
+		fmt.Printf("Posted posts: %d\n", len(postedPosts))
+		if len(failedPosts) > 0 {
+			fmt.Printf("Failed posts: %d\n", len(failedPosts))
+		}
+
+		// Show next few scheduled posts if any
+		if len(scheduledPosts) > 0 {
+			fmt.Println("\nUpcoming scheduled posts:")
+			fmt.Println("========================")
+
+			// Sort scheduled posts by scheduled time
+			sortedPosts := make([]models.Post, len(scheduledPosts))
+			copy(sortedPosts, scheduledPosts)
+
+			// Simple sort by scheduled time (bubble sort for simplicity)
+			for i := 0; i < len(sortedPosts)-1; i++ {
+				for j := 0; j < len(sortedPosts)-i-1; j++ {
+					if sortedPosts[j].ScheduledAt.After(sortedPosts[j+1].ScheduledAt) {
+						sortedPosts[j], sortedPosts[j+1] = sortedPosts[j+1], sortedPosts[j]
+					}
+				}
+			}
+
+			// Show up to 5 next scheduled posts
+			maxShow := 5
+			if len(sortedPosts) < maxShow {
+				maxShow = len(sortedPosts)
+			}
+
+			for i := 0; i < maxShow; i++ {
+				post := sortedPosts[i]
+				// Convert to user's timezone
+				loc, err := cfg.GetTimezone()
+				if err != nil {
+					loc = time.UTC
+				}
+				localTime := post.ScheduledAt.In(loc)
+
+				// Show time until publication
+				now, err := cfg.Now()
+				if err != nil {
+					now = time.Now()
+				}
+				timeUntil := post.ScheduledAt.Sub(now)
+
+				const maxContentLength = 50
+				content := post.Content
+				if len(content) > maxContentLength {
+					content = content[:maxContentLength-3] + "..."
+				}
+
+				var cronStatus string
+				if post.CronEntryID > 0 {
+					cronStatus = fmt.Sprintf("(timer: %d)", post.CronEntryID)
+				} else {
+					cronStatus = "(no timer)"
+				}
+
+				if timeUntil > 0 {
+					fmt.Printf("ID %d: %s - %s %s\n",
+						post.ID,
+						localTime.Format("Jan 02 15:04 MST"),
+						c.formatDuration(timeUntil),
+						cronStatus)
+				} else {
+					fmt.Printf("ID %d: %s (overdue) %s\n",
+						post.ID,
+						localTime.Format("Jan 02 15:04 MST"),
+						cronStatus)
+				}
+				fmt.Printf("     Content: %s\n", content)
+			}
+
+			if len(sortedPosts) > maxShow {
+				fmt.Printf("... and %d more posts\n", len(sortedPosts)-maxShow)
+			}
+		}
+
+		// Show next cron execution time
+		nextRun := status["next_run"].(time.Time)
+		if !nextRun.IsZero() {
+			// The nextRun time is already in the correct timezone
+			fmt.Printf("\nNext execution: %s\n", nextRun.Format("2006-01-02 15:04:05 MST"))
+		}
+	} else {
+		fmt.Println("ℹ️  Auto-scheduler will start automatically when you schedule a post")
+	}
+}
+
+func (c *CLI) cleanupAndExit() {
+	if c.cronScheduler != nil && c.cronScheduler.IsRunning() {
+		fmt.Println("🛑 Stopping auto-scheduler...")
+		c.cronScheduler.Stop()
+	}
 }
