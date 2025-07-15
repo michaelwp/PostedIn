@@ -21,6 +21,7 @@ type Config struct {
 	LinkedIn LinkedInConfig `json:"linkedin"`
 	Storage  StorageConfig  `json:"storage"`
 	Timezone TimezoneConfig `json:"timezone"`
+	Cron     CronConfig     `json:"cron"`
 }
 
 type LinkedInConfig struct {
@@ -38,6 +39,10 @@ type StorageConfig struct {
 type TimezoneConfig struct {
 	Location string `json:"location"`
 	Offset   string `json:"offset"`
+}
+
+type CronConfig struct {
+	Enabled bool `json:"enabled"`
 }
 
 const (
@@ -70,6 +75,9 @@ func LoadConfig() (*Config, error) {
 			Timezone: TimezoneConfig{
 				Location: localLocation,
 				Offset:   localOffset,
+			},
+			Cron: CronConfig{
+				Enabled: true,
 			},
 		}
 

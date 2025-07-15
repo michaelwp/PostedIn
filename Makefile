@@ -104,6 +104,13 @@ pre-commit:
 	@echo "Running pre-commit checks..."
 	@.git/hooks/pre-commit
 
+# Start scheduler daemon (automatically manages scheduled posts)
+start-daemon: build
+	@echo "Starting LinkedIn scheduler daemon..."
+	@echo "Auto-scheduling is enabled - posts will be published automatically"
+	@echo "Use Ctrl+C to stop the daemon"
+	./$(BINARY_PATH)
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -123,6 +130,7 @@ help:
 	@echo "  dev               - Format, vet, lint, and build (development workflow)"
 	@echo "  deps              - Install dependencies"
 	@echo "  pre-commit        - Run pre-commit checks manually"
+	@echo "  start-daemon      - Start scheduler daemon with auto-publishing"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-callback build-all run run-callback run-bin run-callback-bin clean fmt vet lint test tidy dev deps pre-commit help
+.PHONY: build build-callback build-all run run-callback run-bin run-callback-bin clean fmt vet lint test tidy dev deps pre-commit start-daemon help

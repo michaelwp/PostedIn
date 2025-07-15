@@ -111,6 +111,16 @@ func (s *Scheduler) MarkAsPosted(id int) error {
 	return fmt.Errorf("post %d not found", id)
 }
 
+func (s *Scheduler) UpdatePostCronEntry(id, cronEntryID int) error {
+	for i, post := range s.Posts {
+		if post.ID == id {
+			s.Posts[i].CronEntryID = cronEntryID
+			return s.savePosts()
+		}
+	}
+	return fmt.Errorf("post %d not found", id)
+}
+
 func (s *Scheduler) GetDuePosts(cfg *config.Config) []models.Post {
 	var duePosts []models.Post
 
