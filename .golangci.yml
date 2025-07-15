@@ -1,0 +1,72 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - unconvert
+    - typecheck
+    - unused
+    - staticcheck
+    - gosimple
+    - errcheck
+    - gosec
+    - bodyclose
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - mnd
+    - goprintffuncname
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - sqlclosecheck
+    - unparam
+    - whitespace
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  mnd:
+    settings:
+      mnd:
+        checks: 
+          - argument
+          - case
+          - condition
+          - operation
+          - return
+          - assign
+  gosec:
+    excludes:
+      - G404 # Exclude "Use of weak random number generator" for non-crypto usage
+      - G101 # Exclude "Potential hardcoded credentials" for OAuth URLs
+      - G304 # Exclude "Potential file inclusion" for config file reading
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - mnd
+        - goconst
+    - path: cmd/
+      linters:
+        - mnd

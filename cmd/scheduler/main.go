@@ -8,10 +8,10 @@ import (
 func main() {
 	// Initialize scheduler with JSON storage
 	sched := scheduler.NewScheduler("posts.json")
-	
+
 	// Initialize CLI
 	cliApp := cli.NewCLI(sched)
-	
+
 	// Run the application
 	cliApp.Run()
 }

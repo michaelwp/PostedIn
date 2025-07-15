@@ -7,7 +7,14 @@ import (
 	"time"
 
 	"PostedIn/internal/timezone"
+
 	"golang.org/x/oauth2"
+)
+
+const (
+	secondsPerHour   = 3600
+	secondsPerMinute = 60
+	restrictedPerm   = 0o600
 )
 
 type Config struct {
@@ -48,7 +55,7 @@ func LoadConfig() (*Config, error) {
 			localLocation = "Asia/Bangkok"
 			localOffset = "+07:00"
 		}
-		
+
 		// Create default config with local timezone
 		defaultConfig := &Config{
 			LinkedIn: LinkedInConfig{
@@ -65,11 +72,11 @@ func LoadConfig() (*Config, error) {
 				Offset:   localOffset,
 			},
 		}
-		
+
 		if err := SaveConfig(defaultConfig); err != nil {
 			return nil, fmt.Errorf("failed to create default config: %w", err)
 		}
-		
+
 		return nil, fmt.Errorf("config file created at %s with local timezone (%s %s) - please fill in your LinkedIn app credentials", ConfigFile, localLocation, localOffset)
 	}
 
@@ -97,7 +104,7 @@ func SaveConfig(config *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	return os.WriteFile(ConfigFile, data, 0644)
+	return os.WriteFile(ConfigFile, data, restrictedPerm)
 }
 
 func LoadToken(filename string) (*oauth2.Token, error) {
@@ -124,10 +131,10 @@ func SaveToken(token *oauth2.Token, filename string) error {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
 
-	return os.WriteFile(filename, data, 0600) // More restrictive permissions for token
+	return os.WriteFile(filename, data, restrictedPerm) // More restrictive permissions for token
 }
 
-// GetTimezone returns the configured timezone location
+// GetTimezone returns the configured timezone location.
 func (c *Config) GetTimezone() (*time.Location, error) {
 	if c.Timezone.Location == "" {
 		// Default to UTC+7 if not configured
@@ -136,7 +143,7 @@ func (c *Config) GetTimezone() (*time.Location, error) {
 	return time.LoadLocation(c.Timezone.Location)
 }
 
-// Now returns the current time in the configured timezone
+// Now returns the current time in the configured timezone.
 func (c *Config) Now() (time.Time, error) {
 	loc, err := c.GetTimezone()
 	if err != nil {
@@ -145,23 +152,23 @@ func (c *Config) Now() (time.Time, error) {
 	return time.Now().In(loc), nil
 }
 
-// ParseTimeInTimezone parses a time string and returns it in the configured timezone
+// ParseTimeInTimezone parses a time string and returns it in the configured timezone.
 func (c *Config) ParseTimeInTimezone(dateStr, timeStr string) (time.Time, error) {
 	loc, err := c.GetTimezone()
 	if err != nil {
 		return time.Time{}, err
 	}
-	
+
 	dateTimeStr := dateStr + " " + timeStr
 	parsedTime, err := time.ParseInLocation("2006-01-02 15:04", dateTimeStr, loc)
 	if err != nil {
 		return time.Time{}, err
 	}
-	
+
 	return parsedTime, nil
 }
 
-// SetDefaultTimezoneIfEmpty sets default timezone configuration if missing
+// SetDefaultTimezoneIfEmpty sets default timezone configuration if missing.
 func (c *Config) SetDefaultTimezoneIfEmpty() {
 	if c.Timezone.Location == "" {
 		c.Timezone.Location = "Asia/Bangkok"
@@ -169,50 +176,50 @@ func (c *Config) SetDefaultTimezoneIfEmpty() {
 	}
 }
 
-// UpdateTimezone updates the timezone configuration
+// UpdateTimezone updates the timezone configuration.
 func (c *Config) UpdateTimezone(location string) error {
 	// Validate the timezone
 	if err := timezone.ValidateTimezone(location); err != nil {
 		return err
 	}
-	
+
 	// Get the current offset for the new timezone
 	loc, err := time.LoadLocation(location)
 	if err != nil {
 		return fmt.Errorf("failed to load timezone: %w", err)
 	}
-	
+
 	now := time.Now().In(loc)
 	_, offset := now.Zone()
-	
-	hours := offset / 3600
-	minutes := (offset % 3600) / 60
-	
+
+	hours := offset / secondsPerHour
+	minutes := (offset % secondsPerHour) / secondsPerMinute
+
 	var offsetStr string
 	if offset >= 0 {
 		offsetStr = fmt.Sprintf("+%02d:%02d", hours, minutes)
 	} else {
 		offsetStr = fmt.Sprintf("-%02d:%02d", -hours, -minutes)
 	}
-	
+
 	// Update config
 	c.Timezone.Location = location
 	c.Timezone.Offset = offsetStr
-	
+
 	return nil
 }
 
-// GetTimezoneInfo returns formatted timezone information
+// GetTimezoneInfo returns formatted timezone information.
 func (c *Config) GetTimezoneInfo() (string, error) {
 	return timezone.FormatTimezoneInfo(c.Timezone.Location)
 }
 
-// GetCommonTimezones returns commonly used timezones
+// GetCommonTimezones returns commonly used timezones.
 func GetCommonTimezones() []timezone.TimezoneInfo {
 	return timezone.GetCommonTimezones()
 }
 
-// DetectLocalTimezone returns the system's local timezone
-func DetectLocalTimezone() (string, string, error) {
+// DetectLocalTimezone returns the system's local timezone.
+func DetectLocalTimezone() (location, offset string, err error) {
 	return timezone.DetectLocalTimezone()
 }

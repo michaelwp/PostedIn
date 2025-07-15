@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"PostedIn/internal/config"
@@ -75,7 +76,7 @@ func (s *Scheduler) AddPost(content string, scheduledAt time.Time, cfg *config.C
 	if err != nil {
 		loc = time.UTC
 	}
-	
+
 	fmt.Printf("Post scheduled with ID %d for %s\n", post.ID, scheduledAt.In(loc).Format("2006-01-02 15:04 MST"))
 	return nil
 }
@@ -86,15 +87,16 @@ func (s *Scheduler) GetPosts() []models.Post {
 
 func (s *Scheduler) DeletePost(id int) error {
 	for i, post := range s.Posts {
-		if post.ID == id {
-			s.Posts = append(s.Posts[:i], s.Posts[i+1:]...)
-			err := s.savePosts()
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Post %d deleted.\n", id)
-			return nil
+		if post.ID != id {
+			continue
 		}
+		s.Posts = append(s.Posts[:i], s.Posts[i+1:]...)
+		err := s.savePosts()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Post %d deleted.\n", id)
+		return nil
 	}
 	return fmt.Errorf("post %d not found", id)
 }
@@ -111,7 +113,7 @@ func (s *Scheduler) MarkAsPosted(id int) error {
 
 func (s *Scheduler) GetDuePosts(cfg *config.Config) []models.Post {
 	var duePosts []models.Post
-	
+
 	// Use timezone-aware current time
 	now, err := cfg.Now()
 	if err != nil {
@@ -173,7 +175,9 @@ func (s *Scheduler) PublishToLinkedIn(ctx context.Context, postID int, cfg *conf
 	err = client.CreatePost(ctx, post.Content, cfg.LinkedIn.UserID)
 	if err != nil {
 		post.Status = "failed"
-		s.savePosts()
+		if saveErr := s.savePosts(); saveErr != nil {
+			log.Printf("Failed to save posts after publish failure: %v", saveErr)
+		}
 		return fmt.Errorf("failed to publish to LinkedIn: %w", err)
 	}
 
