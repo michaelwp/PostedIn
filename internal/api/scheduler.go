@@ -20,6 +20,8 @@ func (r *Router) setupSchedulerRoutes(api fiber.Router) {
 	scheduler := api.Group("/scheduler")
 
 	scheduler.Get("/status", r.getSchedulerStatus)
+	scheduler.Post("/start", r.startScheduler)
+	scheduler.Post("/stop", r.stopScheduler)
 }
 
 // @Router /scheduler/status [get].
@@ -66,5 +68,44 @@ func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"data":    response,
+	})
+}
+
+// @Router /scheduler/start [post].
+func (r *Router) startScheduler(c *fiber.Ctx) error {
+	if r.cronScheduler == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scheduler not available",
+		})
+	}
+
+	if err := r.cronScheduler.Start(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Scheduler started successfully",
+	})
+}
+
+// @Router /scheduler/stop [post].
+func (r *Router) stopScheduler(c *fiber.Ctx) error {
+	if r.cronScheduler == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Scheduler not available",
+		})
+	}
+
+	r.cronScheduler.Stop()
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Scheduler stopped successfully",
 	})
 }

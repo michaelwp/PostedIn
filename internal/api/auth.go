@@ -37,6 +37,7 @@ func (r *Router) setupAuthRoutes(api fiber.Router) {
 
 	auth.Get("/linkedin", r.getLinkedInAuthURL)
 	auth.Get("/status", r.getAuthStatus)
+	auth.Post("/logout", r.logout)
 	auth.Get("/debug", r.debugAuth)
 }
 
@@ -81,6 +82,29 @@ func (r *Router) getAuthStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"data":    response,
+	})
+}
+
+// @Router /auth/logout [post].
+func (r *Router) logout(c *fiber.Ctx) error {
+	// Remove the token file
+	if err := os.Remove(r.config.Storage.TokenFile); err != nil && !os.IsNotExist(err) {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to logout: " + err.Error(),
+		})
+	}
+
+	// Clear user ID from config
+	r.config.LinkedIn.UserID = ""
+	if err := config.SaveConfig(r.config); err != nil {
+		log.Printf("⚠️ Config save failed during logout: %v", err)
+		// Don't fail completely - token removal is more important
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Logged out successfully",
 	})
 }
 

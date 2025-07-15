@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "content": "Test midnight post by PostedIn.",
+    "scheduled_at": "2025-07-16T00:17:00+07:00",
+    "status": "posted",
+    "created_at": "2025-07-16T00:15:31.153892+07:00"
+  },
+  {
+    "id": 2,
+    "content": "#2 Test midnight post by PostedIn.",
+    "scheduled_at": "2025-07-16T00:26:00+07:00",
+    "status": "posted",
+    "created_at": "2025-07-16T00:24:45.079435+07:00"
+  }
+]
