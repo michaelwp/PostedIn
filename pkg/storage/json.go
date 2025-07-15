@@ -37,5 +37,6 @@ func (js *JSONStorage) SavePosts(posts []models.Post) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(js.filename, data, 0644)
+	const restrictedPerm = 0o600
+	return os.WriteFile(js.filename, data, restrictedPerm)
 }

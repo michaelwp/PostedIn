@@ -50,6 +50,8 @@ linters-settings:
   gosec:
     excludes:
       - G404 # Exclude "Use of weak random number generator" for non-crypto usage
+      - G101 # Exclude "Potential hardcoded credentials" for OAuth URLs
+      - G304 # Exclude "Potential file inclusion" for config file reading
   gocritic:
     enabled-tags:
       - diagnostic

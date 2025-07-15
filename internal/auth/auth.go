@@ -3,12 +3,20 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"PostedIn/internal/config"
 	"PostedIn/pkg/linkedin"
+)
+
+const (
+	authTimeout     = 5 * time.Minute
+	shutdownTimeout = 5 * time.Second
+	readTimeout     = 15 * time.Second
+	writeTimeout    = 30 * time.Second
 )
 
 type AuthServer struct {
@@ -44,8 +52,11 @@ func (a *AuthServer) StartOAuth() (*linkedin.Client, error) {
 	mux.HandleFunc("/", a.handleHome)
 
 	a.server = &http.Server{
-		Addr:    redirectURL.Host,
-		Handler: mux,
+		Addr:              redirectURL.Host,
+		Handler:           mux,
+		ReadHeaderTimeout: readTimeout,
+		ReadTimeout:       writeTimeout,
+		WriteTimeout:      writeTimeout,
 	}
 
 	// Start server in goroutine
@@ -68,7 +79,7 @@ func (a *AuthServer) StartOAuth() (*linkedin.Client, error) {
 	case client := <-a.done:
 		a.shutdown()
 		return client, nil
-	case <-time.After(5 * time.Minute):
+	case <-time.After(authTimeout):
 		a.shutdown()
 		return nil, fmt.Errorf("authentication timeout after 5 minutes")
 	}
@@ -96,7 +107,9 @@ func (a *AuthServer) handleHome(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
 func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +149,9 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Save user ID to config
 	if id, ok := profile["id"].(string); ok {
 		a.config.LinkedIn.UserID = id
-		config.SaveConfig(a.config)
+		if err := config.SaveConfig(a.config); err != nil {
+			log.Printf("Failed to save config: %v", err)
+		}
 	}
 
 	// Success page
@@ -158,7 +173,9 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 </html>`
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 
 	// Signal completion
 	a.done <- a.client
@@ -166,8 +183,10 @@ func (a *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 func (a *AuthServer) shutdown() {
 	if a.server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		a.server.Shutdown(ctx)
+		if err := a.server.Shutdown(ctx); err != nil {
+			log.Printf("Failed to shutdown server: %v", err)
+		}
 	}
 }

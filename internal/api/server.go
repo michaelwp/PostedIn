@@ -12,6 +12,13 @@ import (
 	"PostedIn/pkg/linkedin"
 )
 
+const (
+	readTimeout     = 15 * time.Second
+	writeTimeout    = 15 * time.Second
+	idleTimeout     = 60 * time.Second
+	shutdownTimeout = 30 * time.Second
+)
+
 type Server struct {
 	config     *config.Config
 	httpServer *http.Server
@@ -49,9 +56,9 @@ func (s *Server) Start() error {
 	s.httpServer = &http.Server{
 		Addr:         ":" + s.port,
 		Handler:      s.corsMiddleware(s.loggingMiddleware(mux)),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	log.Printf("🚀 Callback API server starting on port %s", s.port)
@@ -103,7 +110,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	client := linkedin.NewClient(linkedinConfig)
 
 	// Exchange code for token
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	token, err := client.ExchangeToken(ctx, code)
@@ -141,11 +148,13 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":    "healthy",
 		"timestamp": time.Now().UTC(),
 		"service":   "linkedin-callback-api",
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +240,9 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 </html>`, authURL)
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
 func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +315,9 @@ func (s *Server) renderSuccess(w http.ResponseWriter, userID string) {
 </html>`
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
 func (s *Server) renderError(w http.ResponseWriter, errorMsg string) {
@@ -383,10 +396,12 @@ func (s *Server) renderError(w http.ResponseWriter, errorMsg string) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		log.Printf("Failed to write response: %v", err)
+	}
 }
 
-// CORS middleware to handle cross-origin requests
+// CORS middleware to handle cross-origin requests.
 func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -402,7 +417,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Logging middleware to log all requests
+// Logging middleware to log all requests.
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

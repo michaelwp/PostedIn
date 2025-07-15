@@ -13,6 +13,10 @@ import (
 )
 
 const (
+	httpTimeout = 30 * time.Second
+)
+
+const (
 	AuthURL     = "https://www.linkedin.com/oauth/v2/authorization"
 	TokenURL    = "https://www.linkedin.com/oauth/v2/accessToken"
 	UserInfoURL = "https://api.linkedin.com/v2/userinfo"
@@ -93,7 +97,7 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 		return nil, fmt.Errorf("no access token available")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", UserInfoURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", UserInfoURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -104,14 +108,18 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 	req.Header.Set("LinkedIn-Version", "202506")
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: httpTimeout,
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", closeErr)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -130,7 +138,7 @@ func (c *Client) GetProfile(ctx context.Context) (map[string]interface{}, error)
 	return profile, nil
 }
 
-func (c *Client) CreatePost(ctx context.Context, text string, userID string) error {
+func (c *Client) CreatePost(ctx context.Context, text, userID string) error {
 	if c.token == nil {
 		return fmt.Errorf("no access token available")
 	}
@@ -169,14 +177,18 @@ func (c *Client) CreatePost(ctx context.Context, text string, userID string) err
 	req.Header.Set("LinkedIn-Version", "202506")
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: httpTimeout,
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to create post: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", closeErr)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

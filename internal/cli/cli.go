@@ -157,7 +157,8 @@ func (c *CLI) listPosts() {
 
 		fmt.Printf("ID: %d | Status: %s | Scheduled: %s\n",
 			post.ID, status, post.ScheduledAt.In(loc).Format("2006-01-02 15:04 MST"))
-		fmt.Printf("Content: %s\n", c.truncateString(post.Content, 80))
+		const maxContentLength = 80
+		fmt.Printf("Content: %s\n", c.truncateString(post.Content, maxContentLength))
 		fmt.Println("---")
 	}
 }
@@ -206,11 +207,6 @@ func (c *CLI) deletePost() {
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
-}
-
-func (c *CLI) parseDateTime(dateStr, timeStr string) (time.Time, error) {
-	dateTimeStr := dateStr + " " + timeStr
-	return time.Parse("2006-01-02 15:04", dateTimeStr)
 }
 
 func (c *CLI) authenticateLinkedIn() {
@@ -269,7 +265,8 @@ func (c *CLI) autoPublishDue() {
 	fmt.Printf("Found %d posts ready to publish.\n", len(duePosts))
 
 	for _, post := range duePosts {
-		fmt.Printf("\nPublishing post %d: %s\n", post.ID, c.truncateString(post.Content, 60))
+		const maxPreviewLength = 60
+		fmt.Printf("\nPublishing post %d: %s\n", post.ID, c.truncateString(post.Content, maxPreviewLength))
 
 		ctx := context.Background()
 		err := c.scheduler.PublishToLinkedIn(ctx, post.ID, cfg)

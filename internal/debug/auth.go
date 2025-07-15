@@ -97,10 +97,16 @@ func checkParam(params url.Values, key, name string) {
 }
 
 func maskString(s string) string {
-	if len(s) <= 8 {
-		return "****"
+	const (
+		maxLength = 8
+		prefixLen = 4
+		suffixLen = 4
+		maskStr   = "****"
+	)
+	if len(s) <= maxLength {
+		return maskStr
 	}
-	return s[:4] + "****" + s[len(s)-4:]
+	return s[:prefixLen] + maskStr + s[len(s)-suffixLen:]
 }
 
 func PrintCommonIssues() {
