@@ -344,3 +344,27 @@ func (cs *CronScheduler) CleanupCompletedJobs() {
 		log.Printf("🧹 Cleaned up %d completed timers", removedCount)
 	}
 }
+
+// RemovePostTimers removes timers for specific post IDs (used when posts are deleted).
+func (cs *CronScheduler) RemovePostTimers(postIDs []int) {
+	if !cs.running || len(postIDs) == 0 {
+		return
+	}
+
+	cs.timersMux.Lock()
+	defer cs.timersMux.Unlock()
+
+	removedCount := 0
+	for _, postID := range postIDs {
+		if timer, exists := cs.timers[postID]; exists {
+			timer.Timer.Stop()
+			delete(cs.timers, postID)
+			removedCount++
+			log.Printf("🗑️ Removed timer for deleted post %d", postID)
+		}
+	}
+
+	if removedCount > 0 {
+		log.Printf("🧹 Removed %d timers for deleted posts", removedCount)
+	}
+}

@@ -262,17 +262,59 @@ func (c *CLI) checkDuePosts() {
 }
 
 func (c *CLI) deletePost() {
-	idStr := c.getInput("Enter post ID to delete: ")
+	fmt.Println("\nDelete Posts")
+	fmt.Println("============")
+	fmt.Println("Enter one or more post IDs to delete:")
+	fmt.Println("- Single post: 5")
+	fmt.Println("- Multiple posts: 1,3,5 or 1 3 5")
+	fmt.Println()
 
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		fmt.Println("Invalid ID format.")
+	idStr := c.getInput("Enter post ID(s): ")
+	if strings.TrimSpace(idStr) == "" {
+		fmt.Println("No IDs provided.")
 		return
 	}
 
-	err = c.scheduler.DeletePost(id)
+	// Parse multiple IDs (support both comma-separated and space-separated)
+	ids, err := c.parsePostIDs(idStr)
+	if err != nil {
+		fmt.Printf("Error parsing IDs: %v\n", err)
+		return
+	}
+
+	if len(ids) == 0 {
+		fmt.Println("No valid IDs provided.")
+		return
+	}
+
+	// Show confirmation for multiple posts
+	if len(ids) > 1 {
+		fmt.Printf("You are about to delete %d posts with IDs: %v\n", len(ids), ids)
+		confirm := c.getInput("Are you sure? (y/N): ")
+		if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+			fmt.Println("Deletion cancelled.")
+			return
+		}
+	}
+
+	// Delete posts
+	if len(ids) == 1 {
+		err = c.scheduler.DeletePost(ids[0])
+		// Clean up timer for single post
+		if err == nil && c.cronScheduler != nil {
+			c.cronScheduler.RemovePostTimers([]int{ids[0]})
+		}
+	} else {
+		err = c.scheduler.DeleteMultiplePosts(ids)
+		// Clean up timers for multiple posts
+		if err == nil && c.cronScheduler != nil {
+			c.cronScheduler.RemovePostTimers(ids)
+		}
+	}
+
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
+		return
 	}
 }
 
@@ -532,6 +574,50 @@ func (c *CLI) formatDuration(d time.Duration) string {
 		seconds := int(d.Seconds())
 		return fmt.Sprintf("in %ds", seconds)
 	}
+}
+
+func (c *CLI) parsePostIDs(input string) ([]int, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, fmt.Errorf("empty input")
+	}
+
+	var ids []int
+	var parts []string
+
+	// Support both comma-separated and space-separated formats
+	if strings.Contains(input, ",") {
+		parts = strings.Split(input, ",")
+	} else {
+		parts = strings.Fields(input)
+	}
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		id, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ID format: '%s'", part)
+		}
+
+		if id <= 0 {
+			return nil, fmt.Errorf("invalid ID: %d (must be positive)", id)
+		}
+
+		// Check for duplicates
+		for _, existingID := range ids {
+			if existingID == id {
+				return nil, fmt.Errorf("duplicate ID: %d", id)
+			}
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
 
 // ensureCronRunning automatically starts the cron scheduler if not already running.
