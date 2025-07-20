@@ -37,7 +37,7 @@ export function TimezoneSettings() {
       if (currentTz === getSystemTimezone()) {
         setSelectedTimezone('System');
       } else {
-        setSelectedTimezone(currentTz);
+        setSelectedTimezone(currentTz || '');
       }
     }
   }, [timezone]);

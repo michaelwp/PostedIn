@@ -1,9 +1,10 @@
 # PostedIn - LinkedIn Post Scheduler
 
-A command-line application for scheduling LinkedIn posts with Go, featuring automatic publishing and timezone-aware scheduling.
+A full-stack application for scheduling LinkedIn posts with Go backend and React web client, featuring automatic publishing and timezone-aware scheduling.
 
 ## Features
 
+### Core Features
 - **Smart Scheduling** - Schedule posts with specific dates and times in your timezone
 - **Automatic Publishing** - Timer-based automatic posting at exact scheduled times
 - **Multiple Post Management** - Delete single or multiple posts at once
@@ -13,46 +14,72 @@ A command-line application for scheduling LinkedIn posts with Go, featuring auto
 - **Auto-publish** - Bulk publish all due posts
 - **Real-time Status** - Live status display with countdown timers
 - **Persistent JSON storage** - Reliable data storage
+
+### Web Interface
+- **React Web Client** - Modern web interface built with React and TypeScript
+- **RESTful API** - Comprehensive REST API with OpenAPI/Swagger documentation
+- **Real-time Dashboard** - Web-based dashboard for managing posts
+- **Responsive Design** - Works on desktop and mobile devices
+
+### Architecture
 - **Clean modular architecture** - Well-organized codebase
+- **API Versioning** - Versioned REST API (`/api/v1/`) for backward compatibility
+- **Static File Serving** - Integrated web client serving
 
 ## Project Structure
 
 ```
 PostedIn/
-├── bin/                    # Binary files (gitignored)
+├── bin/                    # Binary files and web client (gitignored)
+│   └── web/
+│       └── dist/          # Built web client files
 ├── cmd/
-│   ├── scheduler/          # Main application entry point
+│   ├── scheduler/          # CLI application entry point
 │   │   └── main.go
-│   └── callback-server/    # OAuth callback server
+│   └── web-api/           # Web API server entry point
 │       └── main.go
 ├── internal/
-│   ├── models/            # Data models (Post)
+│   ├── models/            # Data models (Post with CronEntryID)
 │   │   └── post.go
 │   ├── scheduler/         # Core scheduling logic
 │   │   └── scheduler.go
-│   ├── cli/              # Command-line interface
+│   ├── cli/              # Command-line interface (11 menu options)
 │   │   └── cli.go
-│   ├── cron/             # Automatic scheduling system
+│   ├── cron/             # Automatic scheduling system (timer-based)
 │   │   └── cron.go
-│   ├── config/           # Configuration management
+│   ├── config/           # Configuration and timezone management
 │   │   └── config.go
-│   ├── timezone/         # Timezone handling
+│   ├── timezone/         # Timezone handling utilities
 │   │   └── timezone.go
 │   ├── auth/             # LinkedIn OAuth authentication
 │   │   └── auth.go
-│   ├── debug/            # Debugging utilities
+│   ├── debug/            # Authentication debugging utilities
 │   │   └── auth.go
-│   └── api/              # API server
-│       └── server.go
+│   └── api/              # RESTful API server (versioned)
+│       ├── router.go     # API routing and middleware
+│       ├── posts.go      # Post management endpoints
+│       ├── auth.go       # Authentication endpoints
+│       ├── scheduler.go  # Scheduler control endpoints
+│       └── timezone.go   # Timezone configuration endpoints
+├── web-client/            # React/TypeScript web client
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── services/     # API client
+│   │   ├── store/        # State management (Zustand)
+│   │   └── models/       # TypeScript types
+│   ├── dist/            # Built web client (copied to bin/web/dist)
+│   ├── package.json
+│   └── vite.config.ts
 ├── pkg/
-│   ├── storage/          # Storage implementations
+│   ├── storage/          # JSON storage implementation
 │   │   └── json.go
 │   └── linkedin/         # LinkedIn API client
 │       └── client.go
+├── docs/                 # Swagger/OpenAPI documentation
 ├── go.mod
-├── config.json          # Configuration file (created automatically)
-├── posts.json           # Data storage (created automatically)
-└── linkedin_token.json  # OAuth token storage (created automatically)
+├── config.json          # Configuration file (auto-created)
+├── posts.json           # Data storage (auto-created)
+└── linkedin_token.json  # OAuth token storage (auto-created)
 ```
 
 ## Building and Running
@@ -60,21 +87,34 @@ PostedIn/
 ### Using Makefile (Recommended):
 ```bash
 make help              # Show all available targets
-make build             # Build the binary
-make run               # Run the application directly
-make run-bin           # Build and run the binary
+make build             # Build the CLI application
+make build-web-api     # Build the web API server
+make build-web-client  # Build the React web client
+make build-all         # Build all applications and web client
+make run               # Run the CLI application directly
+make run-web-api       # Run the web API server directly
 make start-daemon      # Start scheduler daemon with auto-publishing
-make clean             # Clean build artifacts
+make clean             # Clean all build artifacts
 ```
 
 ### Manual Commands:
 ```bash
-# Run directly
+# Run CLI application directly
 go run cmd/scheduler/main.go
 
-# Build binary
+# Run web API server directly
+go run cmd/web-api/main.go
+
+# Build CLI binary
 go build -o bin/linkedin-scheduler cmd/scheduler/main.go
 ./bin/linkedin-scheduler
+
+# Build web API server binary
+go build -o bin/web-api-server cmd/web-api/main.go
+./bin/web-api-server
+
+# Build web client
+cd web-client && npm ci && npm run build
 ```
 
 ### Development:
@@ -100,11 +140,19 @@ To use LinkedIn posting features, you need to set up a LinkedIn app:
 
 ## Quick Start
 
+### CLI Application
 1. **Build and run**: `make run` or `go run cmd/scheduler/main.go`
 2. **Configure timezone**: Choose option 9 to set your local timezone
 3. **Setup LinkedIn**: See [LINKEDIN_SETUP.md](LINKEDIN_SETUP.md) and use option 5 to authenticate
 4. **Schedule posts**: Use option 1 to schedule posts
 5. **Watch them publish automatically**: The app will publish at exact scheduled times
+
+### Web Application
+1. **Build everything**: `make build-all`
+2. **Start web server**: `make run-web-api` or `go run cmd/web-api/main.go`
+3. **Open in browser**: Navigate to [http://localhost:8080](http://localhost:8080)
+4. **Configure and authenticate**: Use the web interface to set up LinkedIn integration
+5. **Manage posts**: Schedule, edit, and manage posts through the web dashboard
 
 ## Usage
 
@@ -229,9 +277,46 @@ Enable verbose logging by checking the auto-scheduler status (option 10) which s
 - Pending posts with countdown timers
 - System status and health checks
 
+## Web Interface
+
+The application includes a modern React-based web interface that provides all the functionality of the CLI in a user-friendly web dashboard.
+
+### Features
+- **Dashboard**: Overview of all scheduled posts with real-time status
+- **Post Management**: Create, edit, delete, and publish posts
+- **Scheduler Control**: Start/stop automatic scheduling
+- **Authentication**: LinkedIn OAuth integration
+- **Timezone Configuration**: Set and manage your timezone
+- **Real-time Updates**: Live countdown timers and status updates
+
+### Accessing the Web Interface
+
+1. **Start the web API server**:
+   ```bash
+   make run-web-api
+   # or
+   go run cmd/web-api/main.go
+   ```
+
+2. **Open in browser**: [http://localhost:8080](http://localhost:8080)
+
+3. **Alternative: Build and serve separately**:
+   ```bash
+   make build-all                    # Build everything
+   ./bin/web-api-server             # Start server
+   ```
+
 ## API Documentation (Swagger/OpenAPI)
 
-The web API is fully documented using Swagger (OpenAPI 3.0). You can view and interact with the API documentation in your browser.
+The web API is fully documented using Swagger (OpenAPI 3.0). All endpoints are versioned under `/api/v1/` for backward compatibility.
+
+### API Endpoints
+- **Base URL**: `http://localhost:8080/api/v1/`
+- **Posts**: `/api/v1/posts` - Manage scheduled posts
+- **Authentication**: `/api/v1/auth` - LinkedIn OAuth
+- **Scheduler**: `/api/v1/scheduler` - Control automatic publishing
+- **Timezone**: `/api/v1/timezone` - Configure timezone settings
+- **Callback**: `/api/v1/callback` - LinkedIn OAuth callback
 
 ### How to Generate Docs
 
@@ -254,3 +339,10 @@ The web API is fully documented using Swagger (OpenAPI 3.0). You can view and in
    [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
 This interactive UI allows you to try out all endpoints, see request/response schemas, and explore the API.
+
+### API Versioning
+
+The API uses semantic versioning with URL-based versioning:
+- **Current version**: `v1`
+- **Full endpoint format**: `http://localhost:8080/api/v1/{endpoint}`
+- **Backward compatibility**: Maintained across minor version updates

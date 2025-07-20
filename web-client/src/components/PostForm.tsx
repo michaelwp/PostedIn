@@ -7,33 +7,6 @@ interface PostFormProps {
   isLoading?: boolean;
 }
 
-const formatDateTimeLocal = (dateStr: string) => {
-  if (!dateStr) return '';
-  
-  try {
-    // Parse the date regardless of format (ISO, space-separated, etc.)
-    const date = new Date(dateStr);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid date string:', dateStr);
-      return '';
-    }
-    
-    // Convert to local datetime-local format (YYYY-MM-DDTHH:MM)
-    // This removes timezone info and converts to local time
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  } catch (error) {
-    console.error('Error formatting date:', error, dateStr);
-    return '';
-  }
-};
 
 const formatForAPI = (dateTimeLocal: string) => {
   if (!dateTimeLocal) return '';

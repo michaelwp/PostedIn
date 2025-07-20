@@ -24,7 +24,7 @@ func (r *Router) setupSchedulerRoutes(api fiber.Router) {
 	scheduler.Post("/stop", r.stopScheduler)
 }
 
-// @Router /scheduler/status [get].
+// @Router /api/v1/scheduler/status [get].
 func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		response := SchedulerStatusResponse{
@@ -71,7 +71,7 @@ func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /scheduler/start [post].
+// @Router /api/v1/scheduler/start [post].
 func (r *Router) startScheduler(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -93,7 +93,7 @@ func (r *Router) startScheduler(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /scheduler/stop [post].
+// @Router /api/v1/scheduler/stop [post].
 func (r *Router) stopScheduler(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

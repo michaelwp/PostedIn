@@ -76,7 +76,7 @@ func LoadConfig() (*Config, error) {
 			LinkedIn: LinkedInConfig{
 				ClientID:     "",
 				ClientSecret: "",
-				RedirectURL:  "http://localhost:8080/callback",
+				RedirectURL:  "http://localhost:8080/api/v1/callback",
 			},
 			Storage: StorageConfig{
 				PostsFile: "posts.json",

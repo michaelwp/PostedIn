@@ -5,6 +5,7 @@ import { PostList } from '../components/PostList';
 import { SchedulerStatus } from '../components/SchedulerStatus';
 import { TimezoneSettings } from '../components/TimezoneSettings';
 import { AuthStatus } from '../components/AuthStatus';
+import { Footer } from '../components/Footer';
 import type { PostRequest, Post } from '../models';
 
 export function Dashboard() {
@@ -166,6 +167,8 @@ export function Dashboard() {
           </div>
         )}
       </div>
+      
+      <Footer />
     </div>
   );
 }
