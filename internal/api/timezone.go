@@ -26,7 +26,7 @@ func (r *Router) setupTimezoneRoutes(api fiber.Router) {
 	timezone.Post("/", r.updateTimezone)
 }
 
-// @Router /timezone [get].
+// @Router /api/v1/timezone [get].
 func (r *Router) getTimezone(c *fiber.Ctx) error {
 	info, err := r.config.GetTimezoneInfo()
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *Router) getTimezone(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /timezone [post].
+// @Router /api/v1/timezone [post].
 func (r *Router) updateTimezone(c *fiber.Ctx) error {
 	var req TimezoneUpdateRequest
 	if err := c.BodyParser(&req); err != nil {

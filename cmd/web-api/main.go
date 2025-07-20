@@ -74,6 +74,9 @@ func main() {
 	router := api.NewRouter(cfg, sched, cronScheduler)
 	router.SetupRoutes(app)
 
+	// Serve static files from web client
+	app.Static("/", "./bin/web/dist")
+
 	// Serve Swagger UI at /swagger/*
 	app.Get("/swagger/*", fiberSwagger.WrapHandler)
 
@@ -104,7 +107,7 @@ func main() {
 	}
 
 	log.Printf("🌐 Fiber Web API server starting on port %s", port)
-	log.Printf("📚 API endpoints available at: http://localhost:%s/api", port)
+	log.Printf("📚 API endpoints available at: http://localhost:%s/api/v1", port)
 	log.Printf("🔗 Health check: http://localhost:%s/health", port)
 
 	if err := app.Listen(":" + port); err != nil {

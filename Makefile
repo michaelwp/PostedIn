@@ -16,6 +16,10 @@ WEB_API_BINARY_PATH=bin/$(WEB_API_BINARY_NAME)
 MAIN_PATH=cmd/scheduler/main.go
 WEB_API_MAIN_PATH=cmd/web-api/main.go
 
+# Web client info
+WEB_CLIENT_DIR=web-client
+WEB_CLIENT_DIST_DIR=bin/web/dist
+
 # Default target
 .DEFAULT_GOAL := help
 
@@ -33,9 +37,19 @@ build-web-api:
 	$(GOBUILD) -o $(WEB_API_BINARY_PATH) $(WEB_API_MAIN_PATH)
 	@echo "Binary created at $(WEB_API_BINARY_PATH)"
 
-# Build all binaries
-build-all: build build-web-api
-	@echo "All binaries built successfully"
+# Build the web client
+build-web-client:
+	@echo "Building web client..."
+	@command -v npm >/dev/null 2>&1 || { echo "npm not found. Please install Node.js and npm"; exit 1; }
+	@cd $(WEB_CLIENT_DIR) && npm ci && npm run build
+	@mkdir -p bin/web
+	@rm -rf $(WEB_CLIENT_DIST_DIR)
+	@cp -r $(WEB_CLIENT_DIR)/dist $(WEB_CLIENT_DIST_DIR)
+	@echo "Web client built and copied to $(WEB_CLIENT_DIST_DIR)"
+
+# Build all binaries and web client
+build-all: build build-web-api build-web-client
+	@echo "All binaries and web client built successfully"
 
 # Run the main application
 run:
@@ -62,6 +76,7 @@ clean:
 	@echo "Cleaning..."
 	$(GOCLEAN)
 	@rm -f $(BINARY_PATH) $(WEB_API_BINARY_PATH)
+	@rm -rf $(WEB_CLIENT_DIST_DIR)
 	@echo "Clean completed"
 
 # Format Go code
@@ -136,7 +151,8 @@ help:
 	@echo "Available targets:"
 	@echo "  build             - Build the main application"
 	@echo "  build-web-api     - Build the web API server (includes OAuth callback)"
-	@echo "  build-all         - Build all applications"
+	@echo "  build-web-client  - Build the web client (React/TypeScript)"
+	@echo "  build-all         - Build all applications and web client"
 	@echo "  run               - Run the main application directly"
 	@echo "  run-web-api       - Run the web API server directly"
 	@echo "  run-bin           - Build and run the main binary"
@@ -157,4 +173,4 @@ help:
 	@echo "  docs-clean        - Remove generated Swagger docs"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-web-api build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean help
+.PHONY: build build-web-api build-web-client build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean help
