@@ -90,7 +90,7 @@ func (r *Router) setupPostRoutes(api fiber.Router) {
 	posts.Post("/:id/publish", r.publishPost)
 }
 
-// @Router /posts [get].
+// @Router /api/v1/posts [get].
 func (r *Router) getPosts(c *fiber.Ctx) error {
 	posts := r.scheduler.GetPosts()
 	postsCopy := make([]models.Post, len(posts))
@@ -106,7 +106,7 @@ func (r *Router) getPosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts [post].
+// @Router /api/v1/posts [post].
 func (r *Router) createPost(c *fiber.Ctx) error {
 	var req PostRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -157,7 +157,7 @@ func (r *Router) createPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/{id} [get].
+// @Router /api/v1/posts/{id} [get].
 func (r *Router) getPost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -183,7 +183,7 @@ func (r *Router) getPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/{id} [put].
+// @Router /api/v1/posts/{id} [put].
 func (r *Router) updatePost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -256,7 +256,7 @@ func (r *Router) updatePost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/{id} [delete].
+// @Router /api/v1/posts/{id} [delete].
 func (r *Router) deletePost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -281,7 +281,7 @@ func (r *Router) deletePost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts [delete].
+// @Router /api/v1/posts [delete].
 func (r *Router) deleteMultiplePosts(c *fiber.Ctx) error {
 	var req DeletePostsRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -314,7 +314,7 @@ func (r *Router) deleteMultiplePosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/due [get].
+// @Router /api/v1/posts/due [get].
 func (r *Router) getDuePosts(c *fiber.Ctx) error {
 	duePosts := r.scheduler.GetDuePosts(r.config)
 	return c.JSON(fiber.Map{
@@ -323,7 +323,7 @@ func (r *Router) getDuePosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/{id}/publish [post].
+// @Router /api/v1/posts/{id}/publish [post].
 func (r *Router) publishPost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -348,7 +348,7 @@ func (r *Router) publishPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /posts/publish-due [post].
+// @Router /api/v1/posts/publish-due [post].
 func (r *Router) publishDuePosts(c *fiber.Ctx) error {
 	duePosts := r.scheduler.GetDuePosts(r.config)
 	var published []int

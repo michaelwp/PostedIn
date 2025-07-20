@@ -41,22 +41,22 @@ func (r *Router) SetupRoutes(app *fiber.App) {
 
 	// API group
 	api := app.Group("/api")
+	v1 := api.Group("/v1")
 
 	// Posts routes
-	r.setupPostRoutes(api)
+	r.setupPostRoutes(v1)
 
 	// Auth routes
-	r.setupAuthRoutes(api)
+	r.setupAuthRoutes(v1)
 
 	// Timezone routes
-	r.setupTimezoneRoutes(api)
+	r.setupTimezoneRoutes(v1)
 
 	// Scheduler routes
-	r.setupSchedulerRoutes(api)
+	r.setupSchedulerRoutes(v1)
 
-	// OAuth callback routes (outside /api group for LinkedIn compatibility)
-	app.Get("/callback", r.handleCallback)
-	app.Get("/", r.handleHome)
+	// OAuth callback routes
+	v1.Get("/callback", r.handleCallback)
 
 	// Health check
 	app.Get("/health", r.healthCheck)
@@ -75,4 +75,4 @@ func (r *Router) healthCheck(c *fiber.Ctx) error {
 // @title LinkedIn Post Scheduler API
 // @version 1.0
 // @description REST API for scheduling and publishing LinkedIn posts.
-// @BasePath /api
+// @BasePath /api/v1
