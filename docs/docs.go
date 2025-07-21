@@ -15,68 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/debug": {
+        "/api/v1/posts": {
             "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Debug LinkedIn authentication",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/linkedin": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Get LinkedIn OAuth URL",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/status": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Get authentication status",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/posts": {
-            "get": {
+                "description": "Returns all scheduled posts, sorted by scheduled time",
                 "produces": [
                     "application/json"
                 ],
@@ -86,7 +27,14 @@ const docTemplate = `{
                 "summary": "List all posts",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: []models.Post }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -95,6 +43,7 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "description": "Schedule a new LinkedIn post",
                 "consumes": [
                     "application/json"
                 ],
@@ -118,14 +67,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "{ success: true, data: models.Post }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -134,6 +90,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "description": "Delete multiple posts by their IDs",
                 "consumes": [
                     "application/json"
                 ],
@@ -157,14 +114,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, deleted_ids: []int, count: int, message: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -173,8 +137,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts/due": {
+        "/api/v1/posts/due": {
             "get": {
+                "description": "Returns posts that are ready to be published",
                 "produces": [
                     "application/json"
                 ],
@@ -184,7 +149,7 @@ const docTemplate = `{
                 "summary": "Get due posts",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: []models.Post }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -193,8 +158,53 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts/publish-due": {
+        "/api/v1/posts/image-url": {
+            "get": {
+                "description": "Returns a direct download URL for a LinkedIn image asset by URN",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Get LinkedIn image download URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "LinkedIn image asset URN",
+                        "name": "urn",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, url: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/posts/publish-due": {
             "post": {
+                "description": "Publish all posts that are due to be published",
                 "produces": [
                     "application/json"
                 ],
@@ -204,7 +214,7 @@ const docTemplate = `{
                 "summary": "Publish all due posts",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, published: []int, failed: []int, message: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -213,8 +223,62 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts/{id}": {
+        "/api/v1/posts/upload-image": {
+            "post": {
+                "description": "Uploads an image file to LinkedIn and returns the asset URN and alt text",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Upload an image to LinkedIn",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Image file to upload",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alt text for the image",
+                        "name": "altText",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, urn: string, altText: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/posts/{id}": {
             "get": {
+                "description": "Returns a single post by its ID",
                 "produces": [
                     "application/json"
                 ],
@@ -233,21 +297,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: models.Post }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -256,6 +320,7 @@ const docTemplate = `{
                 }
             },
             "put": {
+                "description": "Update the content, scheduled time, or images of a post",
                 "consumes": [
                     "application/json"
                 ],
@@ -286,21 +351,28 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: models.Post }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -309,6 +381,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "description": "Delete a single post by its ID",
                 "produces": [
                     "application/json"
                 ],
@@ -327,21 +400,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, deleted_id: int, message: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -350,8 +423,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts/{id}/publish": {
+        "/api/v1/posts/{id}/publish": {
             "post": {
+                "description": "Publish a single post to LinkedIn by its ID",
                 "produces": [
                     "application/json"
                 ],
@@ -370,21 +444,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, published_id: int, message: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -393,8 +467,37 @@ const docTemplate = `{
                 }
             }
         },
-        "/scheduler/status": {
+        "/api/v1/scheduler/start": {
+            "post": {
+                "description": "Starts the auto-scheduler for publishing posts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scheduler"
+                ],
+                "summary": "Start the scheduler",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, message: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/scheduler/status": {
             "get": {
+                "description": "Returns the status and next run time of the auto-scheduler",
                 "produces": [
                     "application/json"
                 ],
@@ -404,7 +507,7 @@ const docTemplate = `{
                 "summary": "Get scheduler status",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: SchedulerStatusResponse }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -413,8 +516,37 @@ const docTemplate = `{
                 }
             }
         },
-        "/timezone": {
+        "/api/v1/scheduler/stop": {
+            "post": {
+                "description": "Stops the auto-scheduler for publishing posts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scheduler"
+                ],
+                "summary": "Stop the scheduler",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, message: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/timezone": {
             "get": {
+                "description": "Returns the current configured timezone",
                 "produces": [
                     "application/json"
                 ],
@@ -424,7 +556,14 @@ const docTemplate = `{
                 "summary": "Get current timezone",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: TimezoneResponse }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -433,6 +572,7 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "description": "Updates the configured timezone",
                 "consumes": [
                     "application/json"
                 ],
@@ -456,14 +596,119 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "{ success: true, data: TimezoneResponse, message: string }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/debug": {
+            "get": {
+                "description": "Returns debug information and common issues for LinkedIn authentication",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Debug LinkedIn authentication",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, info: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, issues: []string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/linkedin": {
+            "get": {
+                "description": "Returns the LinkedIn OAuth URL for authentication",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get LinkedIn OAuth URL",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, auth_url: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Logs out the current user and removes the LinkedIn token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, message: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/status": {
+            "get": {
+                "description": "Returns the current LinkedIn authentication status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get authentication status",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, data: AuthStatusResponse }",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -475,7 +720,6 @@ const docTemplate = `{
     },
     "definitions": {
         "api.DeletePostsRequest": {
-            "description": "Request payload for deleting multiple posts",
             "type": "object",
             "properties": {
                 "ids": {
@@ -487,11 +731,16 @@ const docTemplate = `{
             }
         },
         "api.PostRequest": {
-            "description": "Request payload for creating or updating a post",
             "type": "object",
             "properties": {
                 "content": {
                     "type": "string"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PostImage"
+                    }
                 },
                 "scheduled_at": {
                     "type": "string"
@@ -499,10 +748,21 @@ const docTemplate = `{
             }
         },
         "api.TimezoneUpdateRequest": {
-            "description": "Request payload for updating timezone",
+            "description": "Request payload for updating timezone.",
             "type": "object",
             "properties": {
                 "location": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PostImage": {
+            "type": "object",
+            "properties": {
+                "altText": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 }
             }
@@ -513,8 +773,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
-	Host:             "localhost:8080",
-	BasePath:         "/api",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "",
 	Description:      "",

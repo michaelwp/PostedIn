@@ -24,7 +24,13 @@ func (r *Router) setupSchedulerRoutes(api fiber.Router) {
 	scheduler.Post("/stop", r.stopScheduler)
 }
 
-// @Router /api/v1/scheduler/status [get].
+// getSchedulerStatus godoc
+// @Summary Get scheduler status
+// @Description Returns the status and next run time of the auto-scheduler
+// @Tags scheduler
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: SchedulerStatusResponse }"
+// @Router /api/v1/scheduler/status [get]
 func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		response := SchedulerStatusResponse{
@@ -71,7 +77,14 @@ func (r *Router) getSchedulerStatus(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/scheduler/start [post].
+// startScheduler godoc
+// @Summary Start the scheduler
+// @Description Starts the auto-scheduler for publishing posts
+// @Tags scheduler
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, message: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/scheduler/start [post]
 func (r *Router) startScheduler(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -93,7 +106,14 @@ func (r *Router) startScheduler(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/scheduler/stop [post].
+// stopScheduler godoc
+// @Summary Stop the scheduler
+// @Description Stops the auto-scheduler for publishing posts
+// @Tags scheduler
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, message: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/scheduler/stop [post]
 func (r *Router) stopScheduler(c *fiber.Ctx) error {
 	if r.cronScheduler == nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

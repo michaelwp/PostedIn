@@ -324,6 +324,7 @@ The web API is fully documented using Swagger (OpenAPI 3.0). All endpoints are v
   ```bash
   make swagger
   ```
+  > **Note:** If you encounter Go module or vendoring issues, ensure your Go environment is set up correctly. The Makefile now uses the `-mod=mod` flag to avoid vendor-related errors.
 - To remove generated docs:
   ```bash
   make docs-clean
