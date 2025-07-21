@@ -1,3 +1,8 @@
+export interface PostImage {
+  id: string;
+  altText: string;
+}
+
 export interface Post {
   id: number;
   content: string;
@@ -5,11 +10,13 @@ export interface Post {
   scheduled_at: string;
   created_at: string;
   cron_entry_id?: number;
+  images?: PostImage[];
 }
 
 export interface PostRequest {
   content: string;
   scheduled_at: string;
+  images?: PostImage[];
 }
 
 export interface DeletePostsRequest {
