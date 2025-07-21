@@ -76,10 +76,10 @@ func LoadConfig() (*Config, error) {
 			LinkedIn: LinkedInConfig{
 				ClientID:     "",
 				ClientSecret: "",
-				RedirectURL:  "http://localhost:8080/api/v1/callback",
+				RedirectURL:  fmt.Sprintf("%s:%s/api/v1/callback", os.Getenv("HOST"), os.Getenv("PORT")),
 			},
 			Storage: StorageConfig{
-				PostsFile: "posts.json",
+				PostsFile: "internal/models/posts.json",
 				TokenFile: TokenFile,
 			},
 			Timezone: TimezoneConfig{

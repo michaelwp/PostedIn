@@ -50,6 +50,7 @@ class ApiClient {
     return this.request<GetPostResponse>(`/posts/${id}`);
   }
 
+  // Supports images field in PostRequest
   async createPost(post: PostRequest): Promise<CreatePostResponse> {
     return this.request<CreatePostResponse>('/posts', {
       method: 'POST',
@@ -57,6 +58,7 @@ class ApiClient {
     });
   }
 
+  // Supports images field in PostRequest
   async updatePost(id: number, post: Partial<PostRequest>): Promise<UpdatePostResponse> {
     return this.request<UpdatePostResponse>(`/posts/${id}`, {
       method: 'PUT',

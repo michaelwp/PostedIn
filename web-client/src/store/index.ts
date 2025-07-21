@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Post, PostRequest, SchedulerStatus, TimezoneInfo } from '../models';
 import { apiClient } from '../services/api';
+import { useEffect } from 'react';
 
 interface PostState {
   posts: Post[];
@@ -20,6 +21,7 @@ interface PostState {
   publishDuePosts: () => Promise<void>;
   setSelectedPost: (post: Post | null) => void;
   clearError: () => void;
+  setPosts: (posts: Post[]) => void;
 }
 
 interface SchedulerState {
@@ -197,7 +199,26 @@ export const usePostStore = create<PostState>((set, get) => ({
   clearError: () => {
     set({ error: null });
   },
+  
+  setPosts: (posts: Post[]) => set({ posts }),
 }));
+
+export function usePostsSSE() {
+  const setPosts = usePostStore(state => state.setPosts);
+  useEffect(() => {
+    const es = new EventSource('/api/v1/posts/stream');
+    es.onmessage = (event) => {
+      try {
+        const posts = JSON.parse(event.data);
+        setPosts(posts);
+      } catch (e) {
+        // handle error
+        console.error("sse-error:", e)
+      }
+    };
+    return () => es.close();
+  }, [setPosts]);
+}
 
 export const useSchedulerStore = create<SchedulerState>((set) => ({
   status: null,

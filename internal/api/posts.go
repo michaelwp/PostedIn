@@ -1,11 +1,18 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 
+	"PostedIn/internal/config"
 	"PostedIn/internal/models"
+	"PostedIn/pkg/linkedin"
+
+	"bufio"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,8 +24,9 @@ const (
 
 // PostRequest represents the request payload for creating/updating posts.
 type PostRequest struct {
-	Content     string `json:"content"`
-	ScheduledAt string `json:"scheduled_at"`
+	Content     string             `json:"content"`
+	ScheduledAt string             `json:"scheduled_at"`
+	Images      []models.PostImage `json:"images,omitempty"`
 }
 
 // PostResponse represents the response format for posts.
@@ -29,6 +37,7 @@ type PostResponse struct {
 	ScheduledAt time.Time `json:"scheduled_at"`
 	CreatedAt   time.Time `json:"created_at"`
 	CronEntryID int       `json:"cron_entry_id,omitempty"`
+	Images      []string  `json:"images,omitempty"`
 }
 
 // DeletePostsRequest represents the request payload for deleting multiple posts.
@@ -79,11 +88,14 @@ func (r *Router) validateAndParsePostRequest(req PostRequest) (time.Time, error)
 func (r *Router) setupPostRoutes(api fiber.Router) {
 	posts := api.Group("/posts")
 
+	posts.Get("/image-url", r.getLinkedInImageURL)
+	posts.Get("/stream", r.streamPosts)
 	posts.Get("/", r.getPosts)
 	posts.Post("/", r.createPost)
 	posts.Delete("/", r.deleteMultiplePosts)
 	posts.Get("/due", r.getDuePosts)
 	posts.Post("/publish-due", r.publishDuePosts)
+	posts.Post("/upload-image", r.uploadImage)
 	posts.Get("/:id", r.getPost)
 	posts.Put("/:id", r.updatePost)
 	posts.Delete("/:id", r.deletePost)
@@ -125,8 +137,8 @@ func (r *Router) createPost(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create the post
-	err = r.scheduler.AddPost(req.Content, scheduledAt, r.config)
+	// Create the post (now with images)
+	err = r.scheduler.AddPost(req.Content, scheduledAt, req.Images, r.config)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
@@ -240,6 +252,11 @@ func (r *Router) updatePost(c *fiber.Ctx) error {
 			})
 		}
 		targetPost.ScheduledAt = scheduledAt
+	}
+
+	// Update images if provided (replace entirely)
+	if req.Images != nil {
+		targetPost.Images = req.Images
 	}
 
 	// Save the updated posts
@@ -369,4 +386,117 @@ func (r *Router) publishDuePosts(c *fiber.Ctx) error {
 		"failed":    failed,
 		"message":   "Auto-publish completed",
 	})
+}
+
+// uploadImage handles image uploads to LinkedIn and returns the asset URN and alt text.
+func (r *Router) uploadImage(c *fiber.Ctx) error {
+	fileHeader, err := c.FormFile("image")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Image file required"})
+	}
+	file, err := fileHeader.Open()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to open image"})
+	}
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			fmt.Printf("Warning: failed to close uploaded file: %v\n", cerr)
+		}
+	}()
+	imageData, err := io.ReadAll(file)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to read image"})
+	}
+	altText := c.FormValue("altText", "")
+
+	// Get LinkedIn client and user URN
+	linkedinConfig := r.config.LinkedIn
+	client := linkedin.NewClient(linkedin.NewConfig(
+		linkedinConfig.ClientID,
+		linkedinConfig.ClientSecret,
+		linkedinConfig.RedirectURL,
+	))
+	token, err := config.LoadToken(r.config.Storage.TokenFile)
+	if err != nil || token == nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": "LinkedIn authentication required"})
+	}
+	client.SetToken(token)
+	userURN := "urn:li:person:" + linkedinConfig.UserID
+
+	assetURN, err := client.UploadImage(c.Context(), imageData, fileHeader.Filename, userURN)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"success": true, "urn": assetURN, "altText": altText})
+}
+
+func (r *Router) getLinkedInImageURL(c *fiber.Ctx) error {
+	urn := c.Query("urn")
+	if urn == "" {
+		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Missing URN"})
+	}
+	linkedinConfig := r.config.LinkedIn
+	client := linkedin.NewClient(linkedin.NewConfig(
+		linkedinConfig.ClientID,
+		linkedinConfig.ClientSecret,
+		linkedinConfig.RedirectURL,
+	))
+	token, err := config.LoadToken(r.config.Storage.TokenFile)
+	if err != nil || token == nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": "LinkedIn authentication required"})
+	}
+	client.SetToken(token)
+	url, err := client.GetImageDownloadURL(c.Context(), urn)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"success": true, "url": url})
+}
+
+func (r *Router) streamPosts(c *fiber.Ctx) error {
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+
+	postsFile := r.config.Storage.PostsFile
+	lastModTime := time.Time{}
+
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		for {
+			fi, err := os.Stat(postsFile)
+			if err != nil {
+				return
+			}
+			if fi.ModTime().After(lastModTime) {
+				lastModTime = fi.ModTime()
+				data, err := os.ReadFile(postsFile)
+				if err != nil {
+					return
+				}
+				// Unmarshal and re-marshal to compact JSON
+				var postsData interface{}
+				if err := json.Unmarshal(data, &postsData); err != nil {
+					return
+				}
+				compactJSON, err := json.Marshal(postsData)
+				if err != nil {
+					return
+				}
+				if _, err := w.WriteString("data: "); err != nil {
+					return
+				}
+				if _, err := w.Write(compactJSON); err != nil {
+					return
+				}
+				if _, err := w.WriteString("\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			}
+			time.Sleep(2 * time.Second)
+		}
+	})
+	return nil
 }
