@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { Post } from '../models';
+import { useState, useEffect } from 'react';
+import type { Post, PostImage } from '../models';
 
 interface PostListProps {
   posts: Post[];
@@ -8,6 +8,23 @@ interface PostListProps {
   onPublish: (id: number) => void;
   onEdit: (post: Post) => void;
   isLoading?: boolean;
+}
+
+function LinkedInImage({ urn, alt }: { urn: string, alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!urn.startsWith('urn:li:image:')) {
+      setUrl(urn);
+      return;
+    }
+    fetch(`/api/v1/posts/image-url?urn=${encodeURIComponent(urn)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setUrl(data.url);
+      });
+  }, [urn]);
+  if (!url) return <span>Loading image...</span>;
+  return <img src={url} alt={alt} style={{ maxWidth: 80, maxHeight: 80, borderRadius: 4, border: '1px solid #eee', objectFit: 'cover' }} />;
 }
 
 export function PostList({ posts, onDelete, onDeleteMultiple, onPublish, onEdit, isLoading = false }: PostListProps) {
@@ -110,6 +127,13 @@ export function PostList({ posts, onDelete, onDeleteMultiple, onPublish, onEdit,
               <div className="post-text">
                 {post.content}
               </div>
+              {post.images && post.images.length > 0 && (
+                <div className="post-images" style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {post.images.map((img: PostImage, idx: number) => (
+                    <LinkedInImage key={img.id + idx} urn={img.id} alt={img.altText || `Post image ${idx + 1}`} />
+                  ))}
+                </div>
+              )}
               
               <div className="post-meta">
                 <span>Scheduled: {formatDateTime(post.scheduled_at)}</span>

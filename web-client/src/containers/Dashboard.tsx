@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePostStore } from '../store';
+import { usePostStore, usePostsSSE } from '../store';
 import { PostForm } from '../components/PostForm';
 import { PostList } from '../components/PostList';
 import { SchedulerStatus } from '../components/SchedulerStatus';
@@ -9,6 +9,7 @@ import { Footer } from '../components/Footer';
 import type { PostRequest, Post } from '../models';
 
 export function Dashboard() {
+  usePostsSSE();
   const {
     posts,
     selectedPost,

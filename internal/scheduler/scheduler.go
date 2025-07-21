@@ -57,8 +57,8 @@ func (s *Scheduler) SavePosts() error {
 	return s.savePosts()
 }
 
-// AddPost adds a new post to the scheduler with the specified content and schedule time.
-func (s *Scheduler) AddPost(content string, scheduledAt time.Time, cfg *config.Config) error {
+// AddPost adds a new post to the scheduler with the specified content, schedule time, and images.
+func (s *Scheduler) AddPost(content string, scheduledAt time.Time, images []models.PostImage, cfg *config.Config) error {
 	// Get current time in configured timezone
 	now, err := cfg.Now()
 	if err != nil {
@@ -71,6 +71,7 @@ func (s *Scheduler) AddPost(content string, scheduledAt time.Time, cfg *config.C
 		ScheduledAt: scheduledAt,
 		Status:      "scheduled",
 		CreatedAt:   now,
+		Images:      images,
 	}
 
 	s.Posts = append(s.Posts, post)
@@ -207,7 +208,11 @@ func (s *Scheduler) PublishToLinkedIn(ctx context.Context, postID int, cfg *conf
 	}
 
 	// Publish the post
-	err = client.CreatePost(ctx, post.Content, cfg.LinkedIn.UserID)
+	var images []linkedin.Image
+	for _, img := range post.Images {
+		images = append(images, linkedin.Image{ID: img.ID, AltText: img.AltText})
+	}
+	err = client.CreatePost(ctx, post.Content, cfg.LinkedIn.UserID, images)
 	if err != nil {
 		post.Status = "failed"
 

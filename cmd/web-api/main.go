@@ -14,11 +14,18 @@ import (
 	"PostedIn/internal/scheduler"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 	fiberSwagger "github.com/swaggo/fiber-swagger" // fiber middleware for Swagger UI
 
 	// swagger embed files.
 	_ "PostedIn/docs" // swagger docs
 )
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("[web-api] No .env file found or failed to load .env (this is OK if running in production):", err)
+	}
+}
 
 func main() {
 	log.Println("🚀 LinkedIn Post Scheduler - Fiber Web API Server")
@@ -37,7 +44,7 @@ func main() {
 	log.Printf("🔧 Redirect URL: %s", cfg.LinkedIn.RedirectURL)
 
 	// Initialize scheduler with JSON storage
-	sched := scheduler.NewScheduler("posts.json")
+	sched := scheduler.NewScheduler("internal/models/posts.json")
 
 	// Initialize cron scheduler
 	cronScheduler := cron.NewScheduler(sched, cfg)

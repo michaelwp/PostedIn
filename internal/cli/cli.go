@@ -157,7 +157,7 @@ func (c *CLI) schedulePost() {
 		return
 	}
 
-	err = c.scheduler.AddPost(content, scheduledAt, cfg)
+	err = c.scheduler.AddPost(content, scheduledAt, nil, cfg)
 	if err != nil {
 		fmt.Printf("Error scheduling post: %v\n", err)
 		return
