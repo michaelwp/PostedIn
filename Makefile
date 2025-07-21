@@ -139,7 +139,7 @@ start-daemon: build
 # Generate Swagger docs
 swagger:
 	@echo "Generating Swagger docs..."
-	go run github.com/swaggo/swag/cmd/swag init -g cmd/web-api/main.go --output docs
+	go run -mod=mod github.com/swaggo/swag/cmd/swag init -g cmd/web-api/main.go --output docs
 
 # Clean Swagger docs
 docs-clean:

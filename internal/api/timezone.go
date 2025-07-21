@@ -26,7 +26,14 @@ func (r *Router) setupTimezoneRoutes(api fiber.Router) {
 	timezone.Post("/", r.updateTimezone)
 }
 
-// @Router /api/v1/timezone [get].
+// getTimezone godoc
+// @Summary Get current timezone
+// @Description Returns the current configured timezone
+// @Tags timezone
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: TimezoneResponse }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/timezone [get]
 func (r *Router) getTimezone(c *fiber.Ctx) error {
 	info, err := r.config.GetTimezoneInfo()
 	if err != nil {
@@ -48,7 +55,17 @@ func (r *Router) getTimezone(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/timezone [post].
+// updateTimezone godoc
+// @Summary Update timezone
+// @Description Updates the configured timezone
+// @Tags timezone
+// @Accept json
+// @Produce json
+// @Param timezone body TimezoneUpdateRequest true "Timezone data"
+// @Success 200 {object} map[string]interface{} "{ success: true, data: TimezoneResponse, message: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/timezone [post]
 func (r *Router) updateTimezone(c *fiber.Ctx) error {
 	var req TimezoneUpdateRequest
 	if err := c.BodyParser(&req); err != nil {

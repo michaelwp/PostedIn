@@ -102,7 +102,14 @@ func (r *Router) setupPostRoutes(api fiber.Router) {
 	posts.Post("/:id/publish", r.publishPost)
 }
 
-// @Router /api/v1/posts [get].
+// getPosts godoc
+// @Summary List all posts
+// @Description Returns all scheduled posts, sorted by scheduled time
+// @Tags posts
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: []models.Post }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts [get]
 func (r *Router) getPosts(c *fiber.Ctx) error {
 	posts := r.scheduler.GetPosts()
 	postsCopy := make([]models.Post, len(posts))
@@ -118,7 +125,17 @@ func (r *Router) getPosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts [post].
+// createPost godoc
+// @Summary Create a new post
+// @Description Schedule a new LinkedIn post
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param post body PostRequest true "Post data"
+// @Success 201 {object} map[string]interface{} "{ success: true, data: models.Post }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts [post]
 func (r *Router) createPost(c *fiber.Ctx) error {
 	var req PostRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -169,7 +186,16 @@ func (r *Router) createPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/{id} [get].
+// getPost godoc
+// @Summary Get a post by ID
+// @Description Returns a single post by its ID
+// @Tags posts
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} map[string]interface{} "{ success: true, data: models.Post }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 404 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/{id} [get]
 func (r *Router) getPost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -195,7 +221,19 @@ func (r *Router) getPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/{id} [put].
+// updatePost godoc
+// @Summary Update a post
+// @Description Update the content, scheduled time, or images of a post
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Param post body PostRequest true "Post data"
+// @Success 200 {object} map[string]interface{} "{ success: true, data: models.Post }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 404 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/{id} [put]
 func (r *Router) updatePost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -273,7 +311,16 @@ func (r *Router) updatePost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/{id} [delete].
+// deletePost godoc
+// @Summary Delete a post
+// @Description Delete a single post by its ID
+// @Tags posts
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} map[string]interface{} "{ success: true, deleted_id: int, message: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 404 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/{id} [delete]
 func (r *Router) deletePost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -298,7 +345,17 @@ func (r *Router) deletePost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts [delete].
+// deleteMultiplePosts godoc
+// @Summary Delete multiple posts
+// @Description Delete multiple posts by their IDs
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param ids body DeletePostsRequest true "IDs to delete"
+// @Success 200 {object} map[string]interface{} "{ success: true, deleted_ids: []int, count: int, message: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts [delete]
 func (r *Router) deleteMultiplePosts(c *fiber.Ctx) error {
 	var req DeletePostsRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -331,7 +388,13 @@ func (r *Router) deleteMultiplePosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/due [get].
+// getDuePosts godoc
+// @Summary Get due posts
+// @Description Returns posts that are ready to be published
+// @Tags posts
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: []models.Post }"
+// @Router /api/v1/posts/due [get]
 func (r *Router) getDuePosts(c *fiber.Ctx) error {
 	duePosts := r.scheduler.GetDuePosts(r.config)
 	return c.JSON(fiber.Map{
@@ -340,7 +403,16 @@ func (r *Router) getDuePosts(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/{id}/publish [post].
+// publishPost godoc
+// @Summary Publish a post
+// @Description Publish a single post to LinkedIn by its ID
+// @Tags posts
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} map[string]interface{} "{ success: true, published_id: int, message: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/{id}/publish [post]
 func (r *Router) publishPost(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
@@ -365,7 +437,13 @@ func (r *Router) publishPost(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /api/v1/posts/publish-due [post].
+// publishDuePosts godoc
+// @Summary Publish all due posts
+// @Description Publish all posts that are due to be published
+// @Tags posts
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, published: []int, failed: []int, message: string }"
+// @Router /api/v1/posts/publish-due [post]
 func (r *Router) publishDuePosts(c *fiber.Ctx) error {
 	duePosts := r.scheduler.GetDuePosts(r.config)
 	var published []int
@@ -388,7 +466,18 @@ func (r *Router) publishDuePosts(c *fiber.Ctx) error {
 	})
 }
 
-// uploadImage handles image uploads to LinkedIn and returns the asset URN and alt text.
+// uploadImage godoc
+// @Summary Upload an image to LinkedIn
+// @Description Uploads an image file to LinkedIn and returns the asset URN and alt text
+// @Tags posts
+// @Accept multipart/form-data
+// @Produce json
+// @Param image formData file true "Image file to upload"
+// @Param altText formData string false "Alt text for the image"
+// @Success 200 {object} map[string]interface{} "{ success: true, urn: string, altText: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/upload-image [post]
 func (r *Router) uploadImage(c *fiber.Ctx) error {
 	fileHeader, err := c.FormFile("image")
 	if err != nil {
@@ -430,6 +519,16 @@ func (r *Router) uploadImage(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true, "urn": assetURN, "altText": altText})
 }
 
+// getLinkedInImageURL godoc
+// @Summary Get LinkedIn image download URL
+// @Description Returns a direct download URL for a LinkedIn image asset by URN
+// @Tags posts
+// @Produce json
+// @Param urn query string true "LinkedIn image asset URN"
+// @Success 200 {object} map[string]interface{} "{ success: true, url: string }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/posts/image-url [get]
 func (r *Router) getLinkedInImageURL(c *fiber.Ctx) error {
 	urn := c.Query("urn")
 	if urn == "" {

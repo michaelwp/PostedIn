@@ -41,7 +41,13 @@ func (r *Router) setupAuthRoutes(api fiber.Router) {
 	auth.Get("/debug", r.debugAuth)
 }
 
-// @Router /auth/linkedin [get].
+// getLinkedInAuthURL godoc
+// @Summary Get LinkedIn OAuth URL
+// @Description Returns the LinkedIn OAuth URL for authentication
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, auth_url: string }"
+// @Router /auth/linkedin [get]
 func (r *Router) getLinkedInAuthURL(c *fiber.Ctx) error {
 	linkedinConfig := linkedin.NewConfig(
 		r.config.LinkedIn.ClientID,
@@ -57,7 +63,13 @@ func (r *Router) getLinkedInAuthURL(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /auth/status [get].
+// getAuthStatus godoc
+// @Summary Get authentication status
+// @Description Returns the current LinkedIn authentication status
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: AuthStatusResponse }"
+// @Router /auth/status [get]
 func (r *Router) getAuthStatus(c *fiber.Ctx) error {
 	token, err := config.LoadToken(r.config.Storage.TokenFile)
 	if err != nil || token == nil {
@@ -85,7 +97,14 @@ func (r *Router) getAuthStatus(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /auth/logout [post].
+// logout godoc
+// @Summary Logout
+// @Description Logs out the current user and removes the LinkedIn token
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, message: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /auth/logout [post]
 func (r *Router) logout(c *fiber.Ctx) error {
 	// Remove the token file
 	if err := os.Remove(r.config.Storage.TokenFile); err != nil && !os.IsNotExist(err) {
@@ -108,7 +127,14 @@ func (r *Router) logout(c *fiber.Ctx) error {
 	})
 }
 
-// @Router /auth/debug [get].
+// debugAuth godoc
+// @Summary Debug LinkedIn authentication
+// @Description Returns debug information and common issues for LinkedIn authentication
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, info: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, issues: []string }"
+// @Router /auth/debug [get]
 func (r *Router) debugAuth(c *fiber.Ctx) error {
 	var issues []string
 	var info string
