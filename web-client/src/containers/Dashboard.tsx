@@ -141,9 +141,11 @@ export function Dashboard() {
                     onSubmit={selectedPost ? handleUpdatePost : handleCreatePost}
                     initialData={selectedPost ? {
                       content: selectedPost.content,
-                      scheduled_at: selectedPost.scheduled_at
+                      scheduled_at: selectedPost.scheduled_at,
+                      images: selectedPost.images // Pass images for editing
                     } : undefined}
                     isLoading={isLoading}
+                    isEdit={!!selectedPost}
                   />
                 </div>
               )}

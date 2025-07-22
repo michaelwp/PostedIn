@@ -5,6 +5,7 @@ interface PostFormProps {
   onSubmit: (post: PostRequest) => void;
   initialData?: Partial<PostRequest>;
   isLoading?: boolean;
+  isEdit?: boolean; // New prop to distinguish edit mode
 }
 
 
@@ -30,7 +31,7 @@ const formatForAPI = (dateTimeLocal: string) => {
   }
 };
 
-export function PostForm({ onSubmit, initialData, isLoading = false }: PostFormProps) {
+export function PostForm({ onSubmit, initialData, isLoading = false, isEdit = false }: PostFormProps) {
   const [content, setContent] = useState(initialData?.content || '');
   
   // Split datetime into separate date and time values
@@ -203,7 +204,7 @@ export function PostForm({ onSubmit, initialData, isLoading = false }: PostFormP
       </div>
       
       <button type="submit" disabled={isLoading || !content.trim() || !dateValue || !timeValue}>
-        {isLoading ? 'Saving...' : 'Schedule Post'}
+        {isLoading ? 'Saving...' : isEdit ? 'Update Post' : 'Schedule Post'}
       </button>
     </form>
   );
