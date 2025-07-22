@@ -29,11 +29,6 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export interface CreatePostResponse extends ApiResponse<Post> {}
-export interface GetPostsResponse extends ApiResponse<Post[]> {}
-export interface GetPostResponse extends ApiResponse<Post> {}
-export interface UpdatePostResponse extends ApiResponse<Post> {}
-
 export interface DeletePostResponse extends ApiResponse<never> {
   deleted_id?: number;
   message?: string;

@@ -146,6 +146,12 @@ docs-clean:
 	@echo "Cleaning Swagger docs..."
 	rm -rf docs
 
+# Lint the web client (React/TypeScript)
+lint-web-client:
+	@echo "Running ESLint for web-client..."
+	@cd $(WEB_CLIENT_DIR) && npm ci
+	@cd $(WEB_CLIENT_DIR) && npx eslint src --max-warnings=0
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -171,6 +177,7 @@ help:
 	@echo "  start-daemon      - Start scheduler daemon with auto-publishing"
 	@echo "  swagger           - Generate Swagger docs"
 	@echo "  docs-clean        - Remove generated Swagger docs"
+	@echo "  lint-web-client   - Run ESLint for the web client (React/TypeScript)"
 	@echo "  help              - Show this help message"
 
-.PHONY: build build-web-api build-web-client build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean help
+.PHONY: build build-web-api build-web-client build-all run run-web-api run-bin run-web-api-bin clean fmt vet lint lint-fix test tidy dev dev-fix deps pre-commit start-daemon swagger docs-clean lint-web-client help
