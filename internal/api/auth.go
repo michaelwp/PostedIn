@@ -31,6 +31,14 @@ type AuthStatusResponse struct {
 	ExpiresAt     string `json:"expires_at,omitempty"`
 }
 
+// LinkedInConfigRequest represents the request body for updating LinkedIn config
+// @Description Request body for updating LinkedIn API configuration
+type LinkedInConfigRequest struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RedirectURL  string `json:"redirect_url"`
+}
+
 // setupAuthRoutes configures all authentication-related routes.
 func (r *Router) setupAuthRoutes(api fiber.Router) {
 	auth := api.Group("/auth")
@@ -39,6 +47,10 @@ func (r *Router) setupAuthRoutes(api fiber.Router) {
 	auth.Get("/status", r.getAuthStatus)
 	auth.Post("/logout", r.logout)
 	auth.Get("/debug", r.debugAuth)
+
+	// New endpoints for LinkedIn config
+	api.Get("/linkedin/config", r.getLinkedInConfig)
+	api.Put("/linkedin/config", r.updateLinkedInConfig)
 }
 
 // getLinkedInAuthURL godoc
@@ -167,6 +179,74 @@ func (r *Router) debugAuth(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"info":    info,
+	})
+}
+
+// getLinkedInConfig godoc
+// @Summary Get LinkedIn API configuration
+// @Description Returns the current LinkedIn API configuration (client_id, masked client_secret, redirect_url)
+// @Tags linkedin
+// @Produce json
+// @Success 200 {object} map[string]interface{} "{ success: true, data: { client_id: string, client_secret: string, redirect_url: string } }"
+// @Router /api/v1/linkedin/config [get]
+func (r *Router) getLinkedInConfig(c *fiber.Ctx) error {
+	mask := func(secret string) string {
+		if len(secret) <= 4 {
+			return "****"
+		}
+		return secret[:2] + strings.Repeat("*", len(secret)-4) + secret[len(secret)-2:]
+	}
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"client_id":     r.config.LinkedIn.ClientID,
+			"client_secret": mask(r.config.LinkedIn.ClientSecret),
+			"redirect_url":  r.config.LinkedIn.RedirectURL,
+		},
+	})
+}
+
+// updateLinkedInConfig godoc
+// @Summary Update LinkedIn API configuration
+// @Description Updates the LinkedIn API configuration (client_id, client_secret, redirect_url)
+// @Tags linkedin
+// @Accept json
+// @Produce json
+// @Param config body LinkedInConfigRequest true "LinkedIn config"
+// @Success 200 {object} map[string]interface{} "{ success: true, data: { client_id: string, client_secret: string, redirect_url: string } }"
+// @Failure 400 {object} map[string]interface{} "{ success: false, error: string }"
+// @Failure 500 {object} map[string]interface{} "{ success: false, error: string }"
+// @Router /api/v1/linkedin/config [put]
+func (r *Router) updateLinkedInConfig(c *fiber.Ctx) error {
+	var req LinkedInConfigRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Invalid JSON payload"})
+	}
+	if req.ClientID == "" || req.ClientSecret == "" || req.RedirectURL == "" {
+		return c.Status(400).JSON(fiber.Map{"success": false, "error": "All fields are required"})
+	}
+
+	r.config.LinkedIn.ClientID = req.ClientID
+	r.config.LinkedIn.ClientSecret = req.ClientSecret
+	r.config.LinkedIn.RedirectURL = req.RedirectURL
+
+	if err := config.SaveConfig(r.config); err != nil {
+		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to save config: " + err.Error()})
+	}
+
+	mask := func(secret string) string {
+		if len(secret) <= 4 {
+			return "****"
+		}
+		return secret[:2] + strings.Repeat("*", len(secret)-4) + secret[len(secret)-2:]
+	}
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"client_id":     r.config.LinkedIn.ClientID,
+			"client_secret": mask(r.config.LinkedIn.ClientSecret),
+			"redirect_url":  r.config.LinkedIn.RedirectURL,
+		},
 	})
 }
 

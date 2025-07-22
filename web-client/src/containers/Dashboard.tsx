@@ -4,6 +4,7 @@ import { PostForm } from '../components/PostForm';
 import { PostList } from '../components/PostList';
 import { SchedulerStatus } from '../components/SchedulerStatus';
 import { TimezoneSettings } from '../components/TimezoneSettings';
+import { LinkedInSettings } from '../components/LinkedInSettings';
 import { AuthStatus } from '../components/AuthStatus';
 import { Footer } from '../components/Footer';
 import type { PostRequest, Post } from '../models';
@@ -165,6 +166,7 @@ export function Dashboard() {
             <h2>Settings</h2>
             <div className="settings-grid">
               <TimezoneSettings />
+              <LinkedInSettings />
               <AuthStatus />
             </div>
           </div>
