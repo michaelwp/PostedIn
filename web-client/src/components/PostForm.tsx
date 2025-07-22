@@ -106,8 +106,12 @@ export function PostForm({ onSubmit, initialData, isLoading = false, isEdit = fa
       setImages([...images, { id: data.urn, altText: data.altText }]);
       setSelectedFile(null);
       setNewAltText('');
-    } catch (err: any) {
-      setUploadError(err.message || 'Upload failed');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setUploadError(err.message || 'Upload failed');
+      } else {
+        setUploadError('Upload failed');
+      }
     } finally {
       setUploading(false);
     }
