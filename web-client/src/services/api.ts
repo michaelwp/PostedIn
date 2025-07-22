@@ -1,9 +1,6 @@
 import type {
   PostRequest,
-  CreatePostResponse,
-  GetPostsResponse,
-  GetPostResponse,
-  UpdatePostResponse,
+  Post,
   DeletePostResponse,
   DeleteMultiplePostsResponse,
   PublishPostResponse,
@@ -42,25 +39,25 @@ class ApiClient {
   }
 
   // Post endpoints
-  async getPosts(): Promise<GetPostsResponse> {
-    return this.request<GetPostsResponse>('/posts');
+  async getPosts(): Promise<ApiResponse<Post[]>> {
+    return this.request<ApiResponse<Post[]>>('/posts');
   }
 
-  async getPost(id: number): Promise<GetPostResponse> {
-    return this.request<GetPostResponse>(`/posts/${id}`);
+  async getPost(id: number): Promise<ApiResponse<Post>> {
+    return this.request<ApiResponse<Post>>(`/posts/${id}`);
   }
 
   // Supports images field in PostRequest
-  async createPost(post: PostRequest): Promise<CreatePostResponse> {
-    return this.request<CreatePostResponse>('/posts', {
+  async createPost(post: PostRequest): Promise<ApiResponse<Post>> {
+    return this.request<ApiResponse<Post>>('/posts', {
       method: 'POST',
       body: JSON.stringify(post),
     });
   }
 
   // Supports images field in PostRequest
-  async updatePost(id: number, post: Partial<PostRequest>): Promise<UpdatePostResponse> {
-    return this.request<UpdatePostResponse>(`/posts/${id}`, {
+  async updatePost(id: number, post: Partial<PostRequest>): Promise<ApiResponse<Post>> {
+    return this.request<ApiResponse<Post>>(`/posts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(post),
     });
@@ -79,8 +76,8 @@ class ApiClient {
     });
   }
 
-  async getDuePosts(): Promise<GetPostsResponse> {
-    return this.request<GetPostsResponse>('/posts/due');
+  async getDuePosts(): Promise<ApiResponse<Post[]>> {
+    return this.request<ApiResponse<Post[]>>('/posts/due');
   }
 
   async publishPost(id: number): Promise<PublishPostResponse> {
