@@ -15,6 +15,74 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/linkedin/config": {
+            "get": {
+                "description": "Returns the current LinkedIn API configuration (client_id, masked client_secret, redirect_url)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "linkedin"
+                ],
+                "summary": "Get LinkedIn API configuration",
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, data: { client_id: string, client_secret: string, redirect_url: string } }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates the LinkedIn API configuration (client_id, client_secret, redirect_url)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "linkedin"
+                ],
+                "summary": "Update LinkedIn API configuration",
+                "parameters": [
+                    {
+                        "description": "LinkedIn config",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.LinkedInConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "{ success: true, data: { client_id: string, client_secret: string, redirect_url: string } }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "{ success: false, error: string }",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/posts": {
             "get": {
                 "description": "Returns all scheduled posts, sorted by scheduled time",
@@ -727,6 +795,21 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "api.LinkedInConfigRequest": {
+            "description": "Request body for updating LinkedIn API configuration",
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "client_secret": {
+                    "type": "string"
+                },
+                "redirect_url": {
+                    "type": "string"
                 }
             }
         },

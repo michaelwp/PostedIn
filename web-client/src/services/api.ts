@@ -135,6 +135,24 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // LinkedIn config endpoints
+  async getLinkedInConfig(): Promise<{ success: boolean; data: { client_id: string; client_secret: string; redirect_url: string } }> {
+    return this.request<{ success: boolean; data: { client_id: string; client_secret: string; redirect_url: string } }>(
+      '/linkedin/config'
+    );
+  }
+
+  async updateLinkedInConfig({ client_id, client_secret, redirect_url }: { client_id: string; client_secret: string; redirect_url: string }): Promise<{ success: boolean; data: { client_id: string; client_secret: string; redirect_url: string } }> {
+    return this.request<{ success: boolean; data: { client_id: string; client_secret: string; redirect_url: string } }>(
+      '/linkedin/config',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id, client_secret, redirect_url }),
+      }
+    );
+  }
 }
 
 export const apiClient = new ApiClient();

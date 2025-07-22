@@ -6,6 +6,16 @@ definitions:
           type: integer
         type: array
     type: object
+  api.LinkedInConfigRequest:
+    description: Request body for updating LinkedIn API configuration
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      redirect_url:
+        type: string
+    type: object
   api.PostRequest:
     properties:
       content:
@@ -33,6 +43,56 @@ definitions:
 info:
   contact: {}
 paths:
+  /api/v1/linkedin/config:
+    get:
+      description: Returns the current LinkedIn API configuration (client_id, masked
+        client_secret, redirect_url)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '{ success: true, data: { client_id: string, client_secret:
+            string, redirect_url: string } }'
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get LinkedIn API configuration
+      tags:
+      - linkedin
+    put:
+      consumes:
+      - application/json
+      description: Updates the LinkedIn API configuration (client_id, client_secret,
+        redirect_url)
+      parameters:
+      - description: LinkedIn config
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/api.LinkedInConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '{ success: true, data: { client_id: string, client_secret:
+            string, redirect_url: string } }'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: '{ success: false, error: string }'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: '{ success: false, error: string }'
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update LinkedIn API configuration
+      tags:
+      - linkedin
   /api/v1/posts:
     delete:
       consumes:
